@@ -2906,6 +2906,45 @@ body {
   justify-content: space-between;
 }
 
+/* 万年历底部快捷操作栏 (移动端专属现在起盘与查看盘面) */
+.cal-bottom-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 4px 0 2px;
+  width: 100%;
+}
+
+.cal-btn-cast-now {
+  flex: 1.25;
+  height: 42px;
+  font-size: 14.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--md-shape-corner-full);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.cal-btn-view-pan {
+  flex: 1;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 550;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--md-shape-corner-full);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
 /* ---------------- 设局控制卡片 ---------------- */
 .controls-card {
   display: flex;
@@ -3552,7 +3591,7 @@ body {
 
   .nine-grid {
     aspect-ratio: 1 / 1;
-    max-width: 350px;
+    max-width: 490px;
     margin: 0 auto;
   }
 
@@ -3590,6 +3629,75 @@ body {
     min-height: 120px;
     height: auto;
     font-size: 13px;
+  }
+}
+
+/* 平板设备专属九宫盘面放大与清晰排版 (Tablet: iPad, Android Pad 等 601px ~ 960px 视口) */
+@media (min-width: 601px) and (max-width: 960px) {
+  .nine-grid {
+    max-width: 490px !important;
+    gap: 8px;
+    padding: 8px;
+    border-radius: var(--md-shape-corner-extra-large);
+  }
+
+  .palace-cell {
+    padding: 9px 6px;
+  }
+
+  .cell-row-top {
+    gap: 6px;
+    padding: 0 4px;
+  }
+
+  .cell-row-mid,
+  .cell-row-bot {
+    gap: 6px;
+    padding: 0 6px;
+  }
+
+  .spirit-tag,
+  .star-name,
+  .door-name {
+    width: 42px;
+    min-width: 42px;
+    font-size: 15px;
+    padding: 2px 4px;
+  }
+
+  .star-name .star-qin {
+    font-size: 15px;
+  }
+
+  .cell-center-content {
+    font-size: 40px;
+  }
+
+  .cell-stem-group {
+    font-size: 26px;
+  }
+
+  .tian-gan, .di-gan {
+    font-size: 26px;
+  }
+
+  .tian-jigan, .di-jigan {
+    font-size: 13.5px;
+  }
+
+  .badge-ma, .badge-kong {
+    font-size: 12.5px;
+    padding: 1px 5px;
+  }
+
+  .palace-zhifu-badge {
+    font-size: 12px;
+    padding: 1px 6px;
+  }
+
+  .palace-kong-halo {
+    width: 64px;
+    height: 64px;
   }
 }
 

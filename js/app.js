@@ -942,38 +942,43 @@ function initControls() {
   // M3 移动端底部导航栏
   document.querySelectorAll('#m3MobileNav .nav-item').forEach(item => {
     item.addEventListener('click', () => {
-      document.querySelectorAll('#m3MobileNav .nav-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      const tab = item.dataset.tab;
-      const leftP = document.getElementById('leftPanel');
-      const rightP = document.getElementById('rightPanel');
-      const calCard = document.querySelector('.calendar-card');
-      const ctrlCard = document.querySelector('.controls-card');
-      const caseCard = document.querySelector('.cases-card');
-
-      if (tab === 'pan') {
-        if (leftP) leftP.classList.add('tab-active');
-        if (rightP) rightP.classList.remove('tab-active');
-      } else {
-        if (leftP) leftP.classList.remove('tab-active');
-        if (rightP) rightP.classList.add('tab-active');
-
-        if (tab === 'cal') {
-          if (calCard) calCard.style.display = 'flex';
-          if (ctrlCard) ctrlCard.style.display = 'none';
-          if (caseCard) caseCard.style.display = 'none';
-        } else if (tab === 'setting') {
-          if (calCard) calCard.style.display = 'none';
-          if (ctrlCard) ctrlCard.style.display = 'flex';
-          if (caseCard) caseCard.style.display = 'none';
-        } else if (tab === 'cases') {
-          if (calCard) calCard.style.display = 'none';
-          if (ctrlCard) ctrlCard.style.display = 'none';
-          if (caseCard) caseCard.style.display = 'flex';
-        }
-      }
+      switchMobileTab(item.dataset.tab);
     });
   });
+}
+
+// 移动端底部标签页切换
+function switchMobileTab(tab) {
+  document.querySelectorAll('#m3MobileNav .nav-item').forEach(i => {
+    i.classList.toggle('active', i.dataset.tab === tab);
+  });
+  const leftP = document.getElementById('leftPanel');
+  const rightP = document.getElementById('rightPanel');
+  const calCard = document.querySelector('.calendar-card');
+  const ctrlCard = document.querySelector('.controls-card');
+  const caseCard = document.querySelector('.cases-card');
+
+  if (tab === 'pan') {
+    if (leftP) leftP.classList.add('tab-active');
+    if (rightP) rightP.classList.remove('tab-active');
+  } else {
+    if (leftP) leftP.classList.remove('tab-active');
+    if (rightP) rightP.classList.add('tab-active');
+
+    if (tab === 'cal') {
+      if (calCard) calCard.style.display = 'flex';
+      if (ctrlCard) ctrlCard.style.display = 'none';
+      if (caseCard) caseCard.style.display = 'none';
+    } else if (tab === 'setting') {
+      if (calCard) calCard.style.display = 'none';
+      if (ctrlCard) ctrlCard.style.display = 'flex';
+      if (caseCard) caseCard.style.display = 'none';
+    } else if (tab === 'cases') {
+      if (calCard) calCard.style.display = 'none';
+      if (ctrlCard) ctrlCard.style.display = 'none';
+      if (caseCard) caseCard.style.display = 'flex';
+    }
+  }
 }
 
 // 5. 万年历月历组件初始化与渲染
@@ -1045,6 +1050,27 @@ function initCalendar() {
     });
   }
   document.getElementById('btnCalNow').addEventListener('click', setToNow);
+
+  // 移动端万年历底部快捷起盘与查看盘面
+  const btnCastNow = document.getElementById('btnCalCastNow');
+  if (btnCastNow) {
+    btnCastNow.addEventListener('click', () => {
+      setToNow();
+      if (typeof switchMobileTab === 'function') {
+        switchMobileTab('pan');
+      }
+      showToast('已按当前时间实时起盘！');
+    });
+  }
+
+  const btnViewPan = document.getElementById('btnCalViewPan');
+  if (btnViewPan) {
+    btnViewPan.addEventListener('click', () => {
+      if (typeof switchMobileTab === 'function') {
+        switchMobileTab('pan');
+      }
+    });
+  }
 
   renderCalendar();
 }
