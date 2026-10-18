@@ -850,7 +850,23 @@ function initControls() {
   const btnCopy = document.getElementById('btnCopyQimen');
   if (btnCopy) btnCopy.addEventListener('click', copyQimenToClipboard);
   const btnTopKeying = document.getElementById('btnTopKeying');
-  if (btnTopKeying) btnTopKeying.addEventListener('click', openKeyingModal);
+  if (btnTopKeying) {
+    btnTopKeying.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openKeyingModal();
+    });
+    btnTopKeying.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      openKeyingModal();
+    }, { passive: true });
+  }
+  const topToolbarGroup = document.querySelector('.top-bar-actions .toolbar-group');
+  if (topToolbarGroup) {
+    topToolbarGroup.addEventListener('click', (e) => {
+      if (e.target === btnTopKeying || (btnTopKeying && btnTopKeying.contains(e.target))) return;
+      openKeyingModal();
+    });
+  }
   const btnBottomCopy = document.getElementById('btnBottomCopy');
   if (btnBottomCopy) btnBottomCopy.addEventListener('click', copyQimenToClipboard);
   const btnBottomCopyYongShen = document.getElementById('btnBottomCopyYongShen');
@@ -2533,6 +2549,9 @@ function renderKeyingModalContent() {
 
 // 全盘克应速查模态弹窗
 function openKeyingModal() {
+  if (!state.currentPan) {
+    executePaipan();
+  }
   if (!state.currentPan) return;
   renderKeyingModalContent();
   openModal('modalKeying');
@@ -2577,7 +2596,10 @@ function initCasesStorage() {
   function loadCases(selectedIdx = null) {
     selCases.innerHTML = '';
     const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-    document.getElementById('txtCaseCount').textContent = `查找到${stored.length}个`;
+    const countEl = document.getElementById('txtCaseCount');
+    if (countEl) countEl.textContent = `查找到${stored.length}个`;
+
+    const emptyEl = document.getElementById('caseEmptyState');
 
     stored.forEach((item, idx) => {
       const opt = document.createElement('option');
@@ -2587,10 +2609,14 @@ function initCasesStorage() {
     });
 
     if (stored.length > 0) {
+      if (emptyEl) emptyEl.style.display = 'none';
+      if (selCases) selCases.style.display = 'block';
       const targetIdx = (selectedIdx !== null && selectedIdx >= 0 && selectedIdx < stored.length) ? selectedIdx : 0;
       selCases.value = targetIdx;
       showCaseDetail(stored[targetIdx]);
     } else {
+      if (emptyEl) emptyEl.style.display = 'flex';
+      if (selCases) selCases.style.display = 'none';
       showCaseDetail(null);
     }
   }

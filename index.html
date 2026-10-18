@@ -329,6 +329,12 @@
           </div>
           <select class="cases-select-box" id="selCaseList" size="3"></select>
 
+          <!-- 空状态提示 (当无案例时展示友好指引) -->
+          <div id="caseEmptyState" class="case-empty-state" style="display: none;">
+            <div class="case-empty-title">暂无保存的案例</div>
+            <div class="case-empty-desc">起局排盘后，点击下方「保存当前格局」即可将当前盘面、所问事项与断语笔记保存至本地案例库，便于日后复盘验局。</div>
+          </div>
+
           <!-- 选中案例的详情预览区 (支持阅读问题、笔记与局象并一键复原) -->
           <div id="caseDetailPanel" class="case-detail-panel" style="display: none; background: var(--md-sys-color-surface-container-high); border-radius: 8px; padding: 10px 12px; border: 1px dashed var(--md-sys-color-outline-variant); font-size: 12.5px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -424,7 +430,7 @@
 
   <!-- M3 系统设置 Dialog -->
   <div class="m3-dialog-scrim" id="modalSettings">
-    <div class="m3-dialog settings-dialog" style="max-width: 620px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="m3-dialog settings-dialog">
       <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
         <div style="display: flex; align-items: center; gap: 8px;">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="var(--md-sys-color-primary)"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
@@ -435,9 +441,9 @@
         </button>
       </div>
 
-      <div class="m3-dialog-body" style="overflow-y: auto; padding: 4px 4px 12px; margin-bottom: 8px; flex: 1;">
-        <div class="settings-hint-banner" style="background: var(--md-sys-color-surface-container); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 12px; color: var(--md-sys-color-on-surface-variant); border-left: 3px solid var(--md-sys-color-primary);">
-          提示：所有常用设置修改后均自动保存至本地，刷新网页或离线重新打开均会自动保持，无需反复切换。
+      <div class="m3-dialog-body settings-dialog-body">
+        <div class="settings-hint-banner">
+          提示：常用设置修改后自动保存至本地，刷新网页或离线重新打开均会自动保持。
         </div>
 
         <!-- 1. 起局与排盘算法 -->
@@ -468,22 +474,29 @@
         </div>
 
         <!-- 2. 默认地理位置与真太阳时 -->
-        <div class="settings-section" style="margin-top: 12px;">
+        <div class="settings-section" style="margin-top: 10px;">
           <div class="settings-section-title">默认地理位置与真太阳时</div>
-          <div class="settings-row" style="flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 220px;">
-              <select id="selSettingProvince" class="m3-select" style="flex: 1;"></select>
-              <select id="selSettingCity" class="m3-select" style="flex: 1;"></select>
+          <div class="settings-location-grid">
+            <div class="settings-location-col">
+              <span class="settings-sublabel">常用省份</span>
+              <select id="selSettingProvince" class="m3-select settings-select"></select>
             </div>
-            <label style="font-size: 13px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-              经度:
-              <input type="number" id="numSettingLongitude" class="m3-input" step="0.01" style="width: 78px;">°
-            </label>
+            <div class="settings-location-col">
+              <span class="settings-sublabel">常用城市</span>
+              <select id="selSettingCity" class="m3-select settings-select"></select>
+            </div>
+            <div class="settings-location-col settings-location-lon">
+              <span class="settings-sublabel">经度 (真太阳时核算)</span>
+              <div class="settings-lon-input-wrapper">
+                <input type="number" id="numSettingLongitude" class="m3-input" step="0.01">
+                <span class="settings-lon-unit">°</span>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- 3. 界面视觉与盘面展示 -->
-        <div class="settings-section" style="margin-top: 12px;">
+        <div class="settings-section" style="margin-top: 10px;">
           <div class="settings-section-title">界面视觉与盘面展示</div>
           <div class="settings-row">
             <span class="settings-label">视觉主题</span>
@@ -524,28 +537,28 @@
         </div>
 
         <!-- 4. 断局与研判偏好 -->
-        <div class="settings-section" style="margin-top: 12px;">
+        <div class="settings-section" style="margin-top: 10px;">
           <div class="settings-section-title">断局与研判偏好</div>
-          <div class="settings-row">
+          <div class="settings-row settings-row-switch">
             <span class="settings-label">运筹蒙版</span>
             <label class="m3-switch-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
               <input type="checkbox" id="chkSettingMask" class="m3-checkbox">
-              <span>减弱非用神宫位遮罩（高亮吉门吉星吉神）</span>
+              <span>弱化非用神宫位（高亮吉门吉星吉神）</span>
             </label>
           </div>
           <div class="settings-row">
             <span class="settings-label">旬空对冲</span>
             <div class="m3-segmented-button-group settings-seg" id="segSettingKong">
               <button class="m3-segment-btn" data-value="1">看对冲宫 (测人/物)</button>
-              <button class="m3-segment-btn" data-value="0">不看对冲宫 (事态)</button>
+              <button class="m3-segment-btn" data-value="0">不看对冲 (测事)</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="m3-dialog-actions" style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--md-sys-color-outline-variant);">
+      <div class="m3-dialog-actions settings-actions">
         <button class="m3-btn m3-btn-outlined" id="btnSettingsResetDefault" style="color: var(--md-sys-color-error); border-color: var(--md-sys-color-error);">恢复默认</button>
-        <div style="display: flex; gap: 8px;">
+        <div class="settings-actions-right">
           <button class="m3-btn m3-btn-tonal" id="btnSettingsOpenHelp">使用说明</button>
           <button class="m3-btn m3-btn-filled" data-close="modalSettings">完成并保存</button>
         </div>
@@ -579,17 +592,25 @@
 
   <!-- M3 全盘克应 Dialog -->
   <div class="m3-dialog-scrim" id="modalKeying">
-    <div class="m3-dialog" style="max-width: 680px;">
-      <div class="m3-dialog-headline" id="modalKeyingTitle">奇门遁甲全盘克应速查</div>
-      <div class="m3-dialog-body" id="modalKeyingBody">
+    <div class="m3-dialog keying-dialog">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="var(--md-sys-color-primary)"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          <span id="modalKeyingTitle" style="font-size: 18px; font-weight: 700;">奇门遁甲全盘克应速查</span>
+        </div>
+        <button class="m3-icon-btn" data-close="modalKeying" title="关闭">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="m3-dialog-body keying-dialog-body" id="modalKeyingBody">
         <!-- 动态生成全盘九宫克应 -->
       </div>
       <div class="m3-dialog-actions modal-keying-actions">
         <button class="m3-btn m3-btn-outlined" id="btnKeyingFilterYongShen" type="button">只看当前用神</button>
         <div class="modal-keying-right-actions">
           <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyPan" type="button" title="仅复制格式化排盘至剪贴板">复制排盘</button>
-          <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyAll" type="button" title="一起复制排盘与当前信息至剪贴板">复制排盘与当前信息</button>
-          <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyCurrent" type="button">复制当前信息</button>
+          <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyAll" type="button" title="一起复制排盘与当前信息至剪贴板">复制全盘与信息</button>
+          <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyCurrent" type="button">复制信息</button>
           <button class="m3-btn m3-btn-filled" data-close="modalKeying" type="button">完成</button>
         </div>
       </div>
