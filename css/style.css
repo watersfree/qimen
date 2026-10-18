@@ -1,0 +1,4427 @@
+/* ==========================================================================
+   Material Design 3 (M3) Design System for 奇门遁甲专业排盘 PWA
+   包含: M3 Design Tokens, 动态浅色/深色主题, Tonal Elevation, 响应式布局
+   ========================================================================== */
+
+:root {
+  /* ---------------- M3 Light Palette (Celestial Indigo & Jade) ---------------- */
+  --md-sys-color-primary: #1e53b7;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #dbe2ff;
+  --md-sys-color-on-primary-container: #00174b;
+  
+  --md-sys-color-secondary: #585e71;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #dce2f9;
+  --md-sys-color-on-secondary-container: #151b2c;
+  --md-sys-color-btn-tonal-bg: #b0c8f6;
+  --md-sys-color-btn-tonal-color: #09204a;
+
+  --md-sys-color-tertiary: #6b4074;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #f9d8ff;
+  --md-sys-color-on-tertiary-container: #260032;
+
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+
+  --md-sys-color-background: #fbf8fd;
+  --md-sys-color-on-background: #1a1b20;
+
+  --md-sys-color-surface: #fbf8fd;
+  --md-sys-color-on-surface: #1a1b20;
+  --md-sys-color-surface-variant: #e2e2ec;
+  --md-sys-color-on-surface-variant: #45464f;
+  
+  --md-sys-color-outline: #757680;
+  --md-sys-color-outline-variant: #c5c6d0;
+
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f5f2fa;
+  --md-sys-color-surface-container: #efecf4;
+  --md-sys-color-surface-container-high: #eae6ee;
+  --md-sys-color-surface-container-highest: #e4e1e8;
+
+  --md-sys-color-inverse-surface: #2f3036;
+  --md-sys-color-inverse-on-surface: #f2eff7;
+  --md-sys-color-inverse-primary: #b4c5ff;
+
+  /* 奇门专用色相 */
+  --qimen-stem-purple: #7b1fa2;
+  --qimen-stem-purple-container: #f3e5f5;
+  --qimen-stem-purple-on: #4a148c;
+
+  --qimen-badge-red: #c62828;
+  --qimen-badge-red-container: #ffebee;
+
+  /* ---------------- M3 Shape Tokens ---------------- */
+  --md-shape-corner-none: 0px;
+  --md-shape-corner-extra-small: 4px;
+  --md-shape-corner-small: 8px;
+  --md-shape-corner-medium: 12px;
+  --md-shape-corner-large: 16px;
+  --md-shape-corner-extra-large: 28px;
+  --md-shape-corner-full: 9999px;
+
+  /* ---------------- M3 Elevation & Shadows ---------------- */
+  --md-elevation-1: 0px 1px 3px 1px rgba(0, 0, 0, 0.08), 0px 1px 2px 0px rgba(0, 0, 0, 0.12);
+  --md-elevation-2: 0px 2px 6px 2px rgba(0, 0, 0, 0.08), 0px 1px 2px 0px rgba(0, 0, 0, 0.12);
+  --md-elevation-3: 0px 4px 8px 3px rgba(0, 0, 0, 0.08), 0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+  --md-elevation-4: 0px 6px 10px 4px rgba(0, 0, 0, 0.08), 0px 2px 3px 0px rgba(0, 0, 0, 0.12);
+
+  /* ---------------- M3 Typography ---------------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-serif: "SimSun", "Songti SC", "STSong", "Noto Serif SC", serif, monospace;
+}
+
+/* ---------------- M3 Dark Palette ---------------- */
+[data-theme="dark"] {
+  --md-sys-color-primary: #b4c5ff;
+  --md-sys-color-on-primary: #002a77;
+  --md-sys-color-primary-container: #003ea8;
+  --md-sys-color-on-primary-container: #dbe2ff;
+
+  --md-sys-color-secondary: #c0c6dd;
+  --md-sys-color-on-secondary: #2a3042;
+  --md-sys-color-secondary-container: #404659;
+  --md-sys-color-on-secondary-container: #dce2f9;
+  --md-sys-color-btn-tonal-bg: #384660;
+  --md-sys-color-btn-tonal-color: #dce5ff;
+
+  --md-sys-color-tertiary: #dfb8e7;
+  --md-sys-color-on-tertiary: #411749;
+  --md-sys-color-tertiary-container: #572d5e;
+  --md-sys-color-on-tertiary-container: #f9d8ff;
+
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+
+  --md-sys-color-background: #121318;
+  --md-sys-color-on-background: #e4e1e8;
+
+  --md-sys-color-surface: #121318;
+  --md-sys-color-on-surface: #e4e1e8;
+  --md-sys-color-surface-variant: #45464f;
+  --md-sys-color-on-surface-variant: #c5c6d0;
+
+  --md-sys-color-outline: #8f909a;
+  --md-sys-color-outline-variant: #45464f;
+
+  --md-sys-color-surface-container-lowest: #0d0e13;
+  --md-sys-color-surface-container-low: #1a1b20;
+  --md-sys-color-surface-container: #1e1f25;
+  --md-sys-color-surface-container-high: #292a2f;
+  --md-sys-color-surface-container-highest: #34343a;
+
+  --md-sys-color-inverse-surface: #e4e1e8;
+  --md-sys-color-inverse-on-surface: #2f3036;
+  --md-sys-color-inverse-primary: #1e53b7;
+
+  --qimen-stem-purple: #ce93d8;
+  --qimen-stem-purple-container: #4a148c;
+  --qimen-stem-purple-on: #f3e5f5;
+
+  --qimen-badge-red: #ef5350;
+  --qimen-badge-red-container: #5c0000;
+}
+
+/* ---------------- 基础重置 ---------------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.25s, color 0.25s;
+}
+
+/* ---------------- M3 Top App Bar (顶栏) ---------------- */
+.m3-top-app-bar {
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  height: 64px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.top-bar-leading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--md-shape-corner-full);
+}
+
+.app-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-title {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.15px;
+}
+
+.app-subtitle {
+  font-size: 11px;
+  color: var(--md-sys-color-outline);
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+
+/* ---------------- M3 按钮系统 ---------------- */
+.m3-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: var(--md-shape-corner-full);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  text-decoration: none;
+  user-select: none;
+}
+
+/* Filled Button */
+.m3-btn-filled {
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-elevation-1);
+}
+.m3-btn-filled:hover {
+  box-shadow: var(--md-elevation-2);
+  filter: brightness(1.06);
+}
+.m3-btn-filled:active {
+  box-shadow: var(--md-elevation-1);
+  filter: brightness(0.95);
+}
+
+/* Tonal Button */
+.m3-btn-tonal {
+  background-color: var(--md-sys-color-btn-tonal-bg, #b0c8f6);
+  color: var(--md-sys-color-btn-tonal-color, #09204a);
+  border: 1px solid rgba(30, 83, 183, 0.12);
+  font-weight: 550;
+}
+.m3-btn-tonal:hover {
+  box-shadow: var(--md-elevation-1);
+  filter: brightness(0.96);
+}
+.m3-btn-tonal:active {
+  filter: brightness(0.92);
+}
+[data-theme="dark"] .m3-btn-tonal {
+  border: 1px solid rgba(180, 197, 255, 0.15);
+}
+[data-theme="dark"] .m3-btn-tonal:hover {
+  filter: brightness(1.08);
+}
+[data-theme="dark"] .m3-btn-tonal:active {
+  filter: brightness(0.94);
+}
+
+/* Outlined Button */
+.m3-btn-outlined {
+  background-color: transparent;
+  color: var(--md-sys-color-primary);
+  border: 1px solid var(--md-sys-color-outline);
+}
+.m3-btn-outlined:hover {
+  background-color: rgba(30, 83, 183, 0.08);
+}
+
+/* Icon Button */
+.m3-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-shape-corner-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.m3-icon-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] .m3-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.m3-icon-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+/* ---------------- M3 Segmented Buttons (分段控制器) ---------------- */
+.m3-segmented-button-group {
+  display: inline-flex;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-shape-corner-full);
+  overflow: hidden;
+  height: 38px;
+}
+
+.m3-segment-btn {
+  background: transparent;
+  border: none;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  border-right: 1px solid var(--md-sys-color-outline);
+}
+
+.m3-segment-btn:last-child {
+  border-right: none;
+}
+
+.m3-segment-btn.active {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-weight: 600;
+}
+
+/* ---------------- M3 Cards (卡片系统) ---------------- */
+.m3-card {
+  border-radius: var(--md-shape-corner-large);
+  padding: 16px;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-card-elevated {
+  background-color: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+}
+
+.m3-card-outlined {
+  background-color: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* ---------------- 主布局结构 ---------------- */
+.app-content {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px 20px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* 简洁模式: 九宫盘面与克应研判双栏黄金比例，全局严谨居中 */
+.simple-mode .app-content {
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  box-sizing: border-box;
+}
+
+.simple-mode .main-grid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.simple-mode .right-column {
+  display: none !important;
+}
+
+.simple-mode .m3-bottom-app-bar {
+  display: none !important;
+}
+
+/* 简洁模式下左栏重构为双栏网格: 顶部为旬空符使指示，下方为九宫盘面与克应研判 */
+.simple-mode .left-column {
+  display: grid !important;
+  grid-template-columns: 440px 490px !important;
+  grid-template-rows: auto 1fr !important;
+  grid-template-areas:
+    "overview overview"
+    "board    keying" !important;
+  gap: 16px 20px;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  max-width: 950px;
+  margin: 0 auto;
+  height: auto;
+}
+
+/* 简洁模式下头部信息卡片: 宽度自适应网格对齐，横向优雅排版 */
+.simple-mode .info-overview-card {
+  grid-area: overview;
+  width: 100%;
+  max-width: 950px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 12px 20px;
+  border-radius: var(--md-shape-corner-large);
+  box-shadow: var(--md-elevation-1);
+}
+
+.simple-mode .info-headline-bar {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.simple-mode .ganzhi-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.simple-mode .ganzhi-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+  background-color: var(--md-sys-color-primary-container);
+  padding: 2.5px 8px;
+  border-radius: var(--md-shape-corner-full);
+  letter-spacing: 0.5px;
+}
+
+.simple-mode .ganzhi-display {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  letter-spacing: 2.5px;
+}
+
+.simple-mode .ju-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.simple-mode .info-card-list {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px 28px !important;
+  padding-top: 8px !important;
+  align-items: center !important;
+}
+
+.simple-mode .info-line-item {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  min-width: 0;
+}
+
+.simple-mode .info-item-secondary {
+  display: none !important;
+}
+
+.simple-mode #itemWuBuYuRow[style*="none"] {
+  display: none !important;
+}
+
+.simple-mode .info-title {
+  width: 56px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: var(--md-sys-color-outline) !important;
+  flex-shrink: 0 !important;
+}
+
+.simple-mode .info-content-wrap {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 10px !important;
+  flex-wrap: wrap;
+  font-size: 13px !important;
+}
+
+/* 简洁模式下九宫盘面卡片: 锁定高度与间距，彻底消除天盘与地盘切换时的尺寸位置跳动 */
+.simple-mode .board-card {
+  grid-area: board;
+  width: 100%;
+  height: 494px !important;
+  min-height: 494px !important;
+  max-height: 494px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  padding: 14px !important;
+  box-sizing: border-box !important;
+  border-radius: var(--md-shape-corner-large);
+}
+
+.simple-mode .board-card-header {
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  margin-bottom: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.simple-mode .nine-grid {
+  width: 410px !important;
+  height: 410px !important;
+  max-width: 410px !important;
+  max-height: 410px !important;
+  aspect-ratio: 1 / 1 !important;
+  margin: 0 auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* 简洁模式下克应研判卡片: 尺寸比例协调，与九宫盘面高度拉齐对齐 */
+.simple-mode .keying-card {
+  grid-area: keying;
+  width: 100%;
+  height: 494px !important;
+  min-height: 494px !important;
+  max-height: 494px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 14px 16px !important;
+  box-sizing: border-box !important;
+  border-radius: var(--md-shape-corner-large);
+  background-color: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  min-width: 0;
+}
+
+.simple-mode .keying-card-header {
+  flex-shrink: 0;
+  margin-bottom: 6px;
+}
+
+.simple-mode .keying-scroll-container {
+  flex: 1;
+  min-height: 0;
+  max-height: 414px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.simple-mode .merged-analysis-card {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.simple-mode .merged-table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.simple-mode .merged-th-tag,
+.simple-mode .merged-cell-tag {
+  width: 72px;
+  min-width: 68px;
+  padding: 6px 6px 6px 8px;
+}
+
+.simple-mode .merged-th-desc,
+.simple-mode .merged-cell-desc {
+  padding: 6px 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.simple-mode .merged-th-status,
+.simple-mode .merged-cell-status {
+  width: 130px;
+  min-width: 110px;
+  padding: 6px 8px 6px 4px;
+  text-align: right;
+}
+
+.simple-mode .merged-status-badge {
+  font-size: 11px;
+  padding: 1.5px 6px;
+  line-height: 1.35;
+}
+
+.simple-mode .merged-classic-block {
+  padding: 6px 10px;
+}
+
+.simple-mode .merged-classic-title {
+  font-size: 11.5px;
+  margin-bottom: 2px;
+}
+
+.simple-mode .merged-classic-item {
+  font-size: 12px;
+  padding: 1px 0 1px 6px;
+  line-height: 1.4;
+}
+
+@media (max-width: 960px) {
+  .simple-mode .left-column {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "overview"
+      "board"
+      "keying" !important;
+    max-width: 460px;
+  }
+  .simple-mode .info-headline-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .simple-mode .info-card-list {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+  .simple-mode .keying-card {
+    height: auto;
+  }
+  .simple-mode .keying-scroll-container {
+    max-height: 480px;
+  }
+}
+
+.left-column, .right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.left-column {
+  height: 100%;
+}
+
+/* ---------------- 头部信息卡片 ---------------- */
+.info-overview-card {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-headline-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.ganzhi-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ganzhi-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface-container);
+  padding: 3px 8px;
+  border-radius: var(--md-shape-corner-small);
+}
+
+.ganzhi-display {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--md-sys-color-primary);
+  letter-spacing: 2px;
+}
+
+.wubuyu-banner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--md-shape-corner-full);
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.wubuyu-banner-badge.danger {
+  background: var(--md-sys-color-error-container, #ffdad6);
+  color: var(--md-sys-color-error, #ba1a1a);
+  border: 1px solid var(--md-sys-color-error, #ba1a1a);
+}
+
+.wubuyu-banner-badge.warning {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+[data-theme="dark"] .wubuyu-banner-badge.danger {
+  background: #410002;
+  color: #ffb4ab;
+  border-color: #ffb4ab;
+}
+
+[data-theme="dark"] .wubuyu-banner-badge.warning {
+  background: #451a03;
+  color: #fcd34d;
+  border-color: #d97706;
+}
+
+.ju-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge-tag-tonal {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-secondary-container);
+  background-color: var(--md-sys-color-secondary-container);
+  padding: 2px 8px;
+  border-radius: var(--md-shape-corner-full);
+}
+
+.badge-pill-primary {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  padding: 2px 10px;
+  border-radius: var(--md-shape-corner-full);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.info-card-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.info-line-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.info-title {
+  color: var(--md-sys-color-outline);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: 52px;
+}
+
+.info-content-wrap {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.info-value {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  white-space: normal;
+}
+
+.info-value-primary {
+  color: var(--md-sys-color-primary);
+  font-weight: 700;
+}
+
+.info-value-error {
+  color: var(--md-sys-color-error);
+  font-weight: 700;
+}
+
+.info-badge-tag {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
+  background-color: var(--md-sys-color-surface-container-high);
+  padding: 1px 6px;
+  border-radius: var(--md-shape-corner-small);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.info-sub-text {
+  font-size: 12px;
+  color: var(--md-sys-color-outline);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fushi-line {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* ---------------- 九宫盘面卡片 ---------------- */
+.board-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.board-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.board-card-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--md-sys-color-primary);
+  background-color: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  padding: 4px 18px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  white-space: nowrap;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.board-card-center:hover {
+  background-color: var(--md-sys-color-surface-container-highest);
+  border-color: var(--md-sys-color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.board-card-center .header-center-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.board-card-center .header-center-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* M3 Switch (开关组件) */
+.m3-switch-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.m3-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+}
+
+.m3-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.m3-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--md-sys-color-surface-container-highest);
+  border: 2px solid var(--md-sys-color-outline);
+  border-radius: var(--md-shape-corner-full);
+  transition: 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: var(--md-sys-color-outline);
+  border-radius: 50%;
+  transition: 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-switch input:checked + .m3-slider {
+  background-color: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+}
+
+.m3-switch input:checked + .m3-slider:before {
+  transform: translateX(20px);
+  background-color: var(--md-sys-color-on-primary);
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+}
+
+/* 3x3 九宫网格 (缩小尺寸、紧凑精练、数学严格等分) */
+.nine-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  aspect-ratio: 1 / 1;
+  background-color: var(--md-sys-color-surface-container-high);
+  padding: 6px;
+  border-radius: var(--md-shape-corner-large);
+  user-select: none;
+  max-width: 410px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.palace-cell {
+  position: relative;
+  background-color: var(--md-sys-color-surface-container-lowest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-shape-corner-medium);
+  padding: 7px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: var(--md-elevation-1);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.palace-cell:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-elevation-2);
+  border-color: var(--md-sys-color-primary);
+}
+
+.palace-cell.selected {
+  outline: 2.5px solid var(--md-sys-color-primary);
+  background-color: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--md-elevation-3);
+  transform: translateY(-2px);
+}
+
+/* 用神落宫虚框 (普通用神: 红色虚线边框，纯白高亮背景) */
+.palace-cell.is-yongshen {
+  border: 2.5px dashed #d32f2f !important;
+  box-shadow: 0 0 0 1.5px rgba(211, 47, 47, 0.22), 0 4px 16px rgba(255, 255, 255, 0.95), 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+  background-color: #ffffff !important;
+  filter: brightness(1.02);
+  position: relative;
+}
+
+[data-theme="dark"] .palace-cell.is-yongshen {
+  border: 2.5px dashed #ff897d !important;
+  box-shadow: 0 0 0 1.5px rgba(255, 137, 125, 0.25), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  background-color: #262b36 !important;
+  filter: brightness(1.06);
+}
+
+/* 用神落宫虚框 (值符专属: 黄色虚线边框，纯白高亮背景) */
+.palace-cell.is-yongshen-zhifu {
+  border: 2.5px dashed #d97706 !important; /* 经典金黄色 */
+  box-shadow: 0 0 0 1.5px rgba(217, 119, 6, 0.25), 0 4px 16px rgba(255, 255, 255, 0.95), 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+  background-color: #ffffff !important;
+  filter: brightness(1.02);
+  position: relative;
+}
+
+[data-theme="dark"] .palace-cell.is-yongshen-zhifu {
+  border: 2.5px dashed #fbbf24 !important; /* 暗色明亮金黄 */
+  box-shadow: 0 0 0 1.5px rgba(251, 191, 36, 0.3), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  background-color: #262b36 !important;
+  filter: brightness(1.06);
+}
+
+.palace-cell.selected.is-yongshen {
+  outline: 2.5px solid var(--md-sys-color-primary);
+  border: 2.5px dashed #d32f2f !important;
+}
+
+[data-theme="dark"] .palace-cell.selected.is-yongshen {
+  outline: 2.5px solid var(--md-sys-color-primary);
+  border: 2.5px dashed #ff897d !important;
+}
+
+.palace-cell.selected.is-yongshen-zhifu {
+  outline: 2.5px solid var(--md-sys-color-primary);
+  border: 2.5px dashed #d97706 !important;
+}
+
+[data-theme="dark"] .palace-cell.selected.is-yongshen-zhifu {
+  outline: 2.5px solid var(--md-sys-color-primary);
+  border: 2.5px dashed #fbbf24 !important;
+}
+
+/* 用神旬空对冲宫 (对宫专属: 蓝色虚线边框，柔和微降亮度背景：用神 > 旬空 > 普通) */
+.palace-cell.is-yongshen-opposite-kong {
+  border: 2.5px dashed var(--md-sys-color-primary, #1a73e8) !important;
+  background-color: #edf3fb !important;
+  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.15), 0 2px 8px rgba(26, 115, 232, 0.18) !important;
+  position: relative;
+}
+
+[data-theme="dark"] .palace-cell.is-yongshen-opposite-kong {
+  border: 2.5px dashed #8ab4f8 !important;
+  background-color: #1a222f !important;
+  box-shadow: 0 0 0 1px rgba(138, 180, 248, 0.2), 0 2px 8px rgba(138, 180, 248, 0.2) !important;
+}
+
+/* 用神旬空淡蓝色光圈 (文字底下的光圈) */
+.palace-kong-halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 82%;
+  aspect-ratio: 1 / 1;
+  max-width: 125px;
+  max-height: 125px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1; /* 严格位于九宫文字下方 */
+  border: 2px dashed rgba(26, 115, 232, 0.85);
+  background: radial-gradient(circle, rgba(66, 165, 245, 0.22) 0%, rgba(66, 165, 245, 0.10) 52%, rgba(66, 165, 245, 0) 75%);
+  box-shadow: 0 0 14px rgba(33, 150, 243, 0.3), inset 0 0 12px rgba(33, 150, 243, 0.2);
+  box-sizing: border-box;
+  animation: kongHaloPulse 3s ease-in-out infinite alternate;
+}
+
+[data-theme="dark"] .palace-kong-halo {
+  border: 2px dashed rgba(138, 180, 248, 0.85);
+  background: radial-gradient(circle, rgba(138, 180, 248, 0.25) 0%, rgba(138, 180, 248, 0.12) 52%, rgba(138, 180, 248, 0) 75%);
+  box-shadow: 0 0 16px rgba(138, 180, 248, 0.35), inset 0 0 14px rgba(138, 180, 248, 0.25);
+}
+
+@keyframes kongHaloPulse {
+  0% {
+    box-shadow: 0 0 10px rgba(33, 150, 243, 0.2), inset 0 0 10px rgba(33, 150, 243, 0.12);
+    border-color: rgba(66, 165, 245, 0.65);
+  }
+  100% {
+    box-shadow: 0 0 18px rgba(33, 150, 243, 0.38), inset 0 0 16px rgba(33, 150, 243, 0.25);
+    border-color: rgba(26, 115, 232, 0.95);
+  }
+}
+
+/* 当有选定用神时，未选中的宫位文字颜色与背景变暗以突出用神 */
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed {
+  background-color: #dbe0eb !important;
+  border-color: rgba(0, 0, 0, 0.09) !important;
+  box-shadow: none !important;
+  opacity: 0.58;
+  filter: contrast(0.92);
+  transition: all 0.25s ease;
+}
+
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .star-name,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .door-name,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .spirit-tag,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .tian-gan,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .di-gan,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .cell-stem-group span,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .cell-center-content {
+  color: #7b8396 !important;
+}
+
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .badge-kong,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .badge-ma,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .spirit-tag.is-fu,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .door-name.is-shi,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .tian-gan.highlight-purple,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .star-name .star-qin,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .tian-jigan-stem,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .di-jigan-stem {
+  opacity: 0.45 !important;
+  filter: grayscale(60%) !important;
+}
+
+/* 深色模式下未选中的宫位变暗 */
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed {
+  background-color: #12151b !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: none !important;
+  opacity: 0.45;
+}
+
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .star-name,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .door-name,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .spirit-tag,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .tian-gan,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .di-gan,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .cell-stem-group span,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .cell-center-content {
+  color: #555b68 !important;
+}
+
+/* 当开启减弱蒙版时：非用神宫位变明亮透彻，保留用神虚框重点的同时方便通盘运筹 */
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed {
+  background-color: #eef2f7 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  opacity: 0.9 !important;
+  filter: none !important;
+}
+
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .star-name,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .door-name,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .spirit-tag,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .tian-gan,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .di-gan,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .cell-stem-group span,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .cell-center-content {
+  color: #334155 !important;
+}
+
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .badge-kong,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .badge-ma,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .spirit-tag.is-fu,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .door-name.is-shi,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .tian-gan.highlight-purple,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .star-name .star-qin,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .tian-jigan-stem,
+.nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .di-jigan-stem {
+  opacity: 0.8 !important;
+  filter: none !important;
+}
+
+/* 深色模式下的减弱蒙版效果 */
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed {
+  background-color: #1a1e27 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  opacity: 0.86 !important;
+  filter: none !important;
+}
+
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .star-name,
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .door-name,
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .spirit-tag,
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .tian-gan,
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .di-gan,
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .cell-stem-group span,
+[data-theme="dark"] .nine-grid.has-yongshen-active.mask-weakened .palace-cell.is-palace-dimmed .cell-center-content {
+  color: #cbd5e1 !important;
+}
+
+/* ================= 运筹模式：吉星、吉门、吉神 金黄色标记 ================= */
+.is-lucky-symbol {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: var(--md-shape-corner-small, 4px);
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+  box-sizing: border-box;
+}
+
+.door-name.is-lucky-symbol,
+.star-name.is-lucky-symbol,
+.spirit-tag.is-lucky-symbol {
+  text-align: left !important;
+  padding: 1px 4px !important;
+}
+
+/* Level 3: 三吉齐聚 (最亮金黄，高辨识度醒目赤金边框与微立体质感，与 2 吉形成鲜明级差) */
+.is-lucky-symbol.lucky-lv-3,
+.nine-grid .palace-cell .is-lucky-symbol.lucky-lv-3,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .is-lucky-symbol.lucky-lv-3 {
+  background-color: #fde047 !important;
+  color: #713f12 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 1px 3px rgba(180, 83, 9, 0.42);
+  border: 1.5px solid #b45309 !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Level 2: 二吉到宫 (介于 3 吉与 1 吉之间，既不比 3 吉突出，又比 1 吉显眼) */
+.is-lucky-symbol.lucky-lv-2,
+.nine-grid .palace-cell .is-lucky-symbol.lucky-lv-2,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .is-lucky-symbol.lucky-lv-2 {
+  background-color: #fde87c !important;
+  color: #854d0e !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 2px rgba(234, 179, 8, 0.22);
+  border: 1px solid rgba(234, 179, 8, 0.35) !important;
+  opacity: 0.98 !important;
+  filter: none !important;
+}
+
+/* Level 1: 单吉到宫 (适当降低透明度至 0.92，底色更温润显眼，保持柔和不抢镜) */
+.is-lucky-symbol.lucky-lv-1,
+.nine-grid .palace-cell .is-lucky-symbol.lucky-lv-1,
+.nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .is-lucky-symbol.lucky-lv-1 {
+  background-color: rgba(254, 243, 199, 0.72) !important;
+  color: #92400e !important;
+  font-weight: 600 !important;
+  box-shadow: none;
+  border: 1px solid rgba(245, 158, 11, 0.28) !important;
+  opacity: 0.92 !important;
+  filter: none !important;
+}
+
+/* 深色模式下的金黄色阶适配 */
+[data-theme="dark"] .is-lucky-symbol.lucky-lv-3,
+[data-theme="dark"] .nine-grid .palace-cell .is-lucky-symbol.lucky-lv-3,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .is-lucky-symbol.lucky-lv-3 {
+  background-color: #b45309 !important;
+  color: #fef3c7 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.65);
+  border: 1.5px solid #fbbf24 !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+[data-theme="dark"] .is-lucky-symbol.lucky-lv-2,
+[data-theme="dark"] .nine-grid .palace-cell .is-lucky-symbol.lucky-lv-2,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .is-lucky-symbol.lucky-lv-2 {
+  background-color: rgba(180, 83, 9, 0.62) !important;
+  color: #fde68a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 4px rgba(217, 119, 6, 0.35);
+  border: 1px solid rgba(245, 158, 11, 0.38) !important;
+  opacity: 0.95 !important;
+  filter: none !important;
+}
+
+[data-theme="dark"] .is-lucky-symbol.lucky-lv-1,
+[data-theme="dark"] .nine-grid .palace-cell .is-lucky-symbol.lucky-lv-1,
+[data-theme="dark"] .nine-grid.has-yongshen-active .palace-cell.is-palace-dimmed .is-lucky-symbol.lucky-lv-1 {
+  background-color: rgba(180, 83, 9, 0.32) !important;
+  color: #fde68a !important;
+  font-weight: 600 !important;
+  box-shadow: none;
+  border: 1px solid rgba(217, 119, 6, 0.28) !important;
+  opacity: 0.90 !important;
+  filter: none !important;
+}
+
+/* 中五正宫左上角减弱蒙版开关按钮 (黑色按钮) */
+.btn-center-mask-toggle {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 10;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  outline: none;
+}
+
+.btn-center-mask-toggle:hover {
+  transform: scale(1.15);
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.btn-center-mask-toggle:active {
+  transform: scale(0.92);
+}
+
+.btn-center-mask-toggle .mask-icon {
+  width: 13.5px;
+  height: 13.5px;
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+/* 实心: 减弱蒙版已开启 (黑色实心圆点) */
+.btn-center-mask-toggle.is-solid {
+  opacity: 0.85;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.btn-center-mask-toggle.is-solid:hover {
+  opacity: 1;
+}
+
+.btn-center-mask-toggle.is-solid .mask-icon {
+  background-color: #1e293b;
+  border: 1.5px solid #1e293b;
+  box-shadow: none;
+}
+
+/* 空圈: 默认正常突出用神 (黑色空圈) */
+.btn-center-mask-toggle.is-hollow {
+  opacity: 0.55;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.btn-center-mask-toggle.is-hollow:hover {
+  opacity: 0.95;
+}
+
+.btn-center-mask-toggle.is-hollow .mask-icon {
+  background-color: transparent;
+  border: 1.75px solid #1e293b;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .btn-center-mask-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .btn-center-mask-toggle.is-solid .mask-icon {
+  background-color: #cbd5e1;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .btn-center-mask-toggle.is-hollow .mask-icon {
+  background-color: transparent;
+  border: 1.75px solid #94a3b8;
+}
+
+/* 中五正宫右上角旬空开关按钮 */
+.btn-center-kong-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  outline: none;
+}
+
+.btn-center-kong-toggle:hover {
+  transform: scale(1.15);
+  background-color: rgba(186, 26, 26, 0.08);
+}
+
+.btn-center-kong-toggle:active {
+  transform: scale(0.92);
+}
+
+.btn-center-kong-toggle .kong-icon {
+  width: 13.5px;
+  height: 13.5px;
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+/* 实心: 表示显示淡蓝色光圈 (开启)，半透明柔和低调，不显突兀 */
+.btn-center-kong-toggle.is-solid {
+  opacity: 0.38;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.btn-center-kong-toggle.is-solid:hover {
+  opacity: 0.85;
+}
+
+.btn-center-kong-toggle.is-solid .kong-icon {
+  background-color: var(--md-sys-color-error, #ba1a1a);
+  border: 1.5px solid var(--md-sys-color-error, #ba1a1a);
+  box-shadow: none;
+}
+
+/* 空圈: 表示不显示 (关闭) */
+.btn-center-kong-toggle.is-hollow {
+  opacity: 0.55;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.btn-center-kong-toggle.is-hollow:hover {
+  opacity: 1;
+}
+
+.btn-center-kong-toggle.is-hollow .kong-icon {
+  background-color: transparent;
+  border: 1.75px solid var(--md-sys-color-error, #ba1a1a);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .btn-center-kong-toggle:hover {
+  background-color: rgba(255, 137, 125, 0.12);
+}
+
+[data-theme="dark"] .btn-center-kong-toggle.is-solid .kong-icon {
+  background-color: #ff897d;
+  border: 1.5px solid #ff897d;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .btn-center-kong-toggle.is-hollow .kong-icon {
+  background-color: transparent;
+  border: 1.75px solid #ff897d;
+}
+
+/* 宫格内容: 保证文字置于光圈上方 */
+.cell-row-top,
+.cell-row-mid,
+.cell-row-bot {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 八神略微往左平移，引导视觉层次 */
+.cell-row-top {
+  padding: 0 3px;
+}
+
+/* 九星与八门在宫内保持基准左对齐，天地盘干亦保持垂直对齐 */
+.cell-row-mid,
+.cell-row-bot {
+  padding: 0 8px;
+}
+
+.cell-row-top .angan-tag {
+  margin-left: auto;
+}
+
+.spirit-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.spirit-tag,
+.star-name,
+.door-name {
+  font-size: 15.5px;
+  font-weight: 700;
+  width: 44px;
+  min-width: 44px;
+  flex-shrink: 0;
+  text-align: left;
+  padding: 1px 4px;
+  box-sizing: border-box;
+  border-radius: var(--md-shape-corner-small, 4px);
+  letter-spacing: 0.5px;
+  color: var(--md-sys-color-on-surface);
+  line-height: 1.15;
+}
+
+.spirit-tag.is-fu {
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  padding: 1px 4px;
+  border-radius: var(--md-shape-corner-small);
+}
+
+.badge-ma {
+  background-color: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  font-size: 11.5px;
+  padding: 1px 4px;
+  border-radius: var(--md-shape-corner-small);
+  font-weight: 700;
+}
+
+.badge-kong {
+  color: var(--md-sys-color-error);
+  font-weight: 900;
+  font-size: 14.5px;
+  -webkit-text-stroke: 1.15px var(--md-sys-color-error);
+  text-shadow: 0 0 0.5px var(--md-sys-color-error);
+  display: inline-block;
+  line-height: 1;
+}
+
+.angan-tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--md-sys-color-error);
+  background-color: var(--md-sys-color-error-container);
+  padding: 1px 5px;
+  border-radius: var(--md-shape-corner-small);
+}
+
+.cell-stem-group {
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.star-name.has-qin {
+  min-width: 50px;
+}
+
+.star-name .star-qin {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--md-sys-color-error, #ba1a1a);
+  margin-left: 1px;
+}
+
+[data-theme="dark"] .star-name .star-qin {
+  color: #ff897d;
+}
+
+.tian-gan {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.tian-gan.highlight-purple {
+  background-color: var(--qimen-stem-purple-container);
+  color: var(--qimen-stem-purple-on);
+  padding: 1px 4px;
+  border-radius: var(--md-shape-corner-small);
+}
+
+.tian-jigan-stem,
+.di-jigan-stem {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--md-sys-color-error, #ba1a1a);
+  flex-shrink: 0;
+  margin-left: 1px;
+}
+
+[data-theme="dark"] .tian-jigan-stem,
+[data-theme="dark"] .di-jigan-stem {
+  color: #ff897d;
+}
+
+.tian-jigan,
+.di-jigan {
+  color: var(--md-sys-color-error);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  line-height: 1;
+  margin-left: 1px;
+  flex-shrink: 0;
+}
+
+.tian-jigan i,
+.di-jigan i {
+  font-style: normal;
+  display: block;
+  line-height: 1;
+  text-align: center;
+}
+
+.door-name.is-shi {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  padding: 1px 4px;
+  border-radius: var(--md-shape-corner-small);
+  font-weight: 700;
+}
+
+.di-gan {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* 中五宫 */
+.cell-center-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--md-sys-color-primary);
+}
+
+/* ---------------- 地盘全息基盘卡片与宫格样式 ---------------- */
+/* 采用古雅素绢宣纸米黄 (#f7f3e8)，契合易学坤土厚德载物之意，温润舒适，与 M3 整体风格完美交融 */
+.palace-cell.is-dipan-cell,
+.nine-grid.is-dipan-mode .palace-cell {
+  background-color: #f7f3e8 !important; /* 古雅素绢宣纸米黄 */
+  border-color: #e8e0d0 !important;
+}
+
+.palace-cell.is-dipan-cell:hover,
+.nine-grid.is-dipan-mode .palace-cell:hover {
+  background-color: #ece3ce !important;
+  border-color: #dfd2b9 !important;
+}
+
+.palace-cell.is-dipan-cell.selected,
+.nine-grid.is-dipan-mode .palace-cell.selected {
+  background-color: #ece3ce !important;
+  border-color: var(--md-sys-color-primary) !important;
+  outline: 2.5px solid var(--md-sys-color-primary);
+}
+
+[data-theme="dark"] .palace-cell.is-dipan-cell,
+[data-theme="dark"] .nine-grid.is-dipan-mode .palace-cell {
+  background-color: #28251e !important; /* 暗色系雅致暖褐 */
+  border-color: #443e32 !important;
+}
+
+[data-theme="dark"] .palace-cell.is-dipan-cell:hover,
+[data-theme="dark"] .nine-grid.is-dipan-mode .palace-cell:hover {
+  background-color: #353026 !important;
+  border-color: #5c5344 !important;
+}
+
+[data-theme="dark"] .palace-cell.is-dipan-cell.selected,
+[data-theme="dark"] .nine-grid.is-dipan-mode .palace-cell.selected {
+  background-color: #353026 !important;
+  border-color: var(--md-sys-color-primary) !important;
+  outline: 2.5px solid var(--md-sys-color-primary);
+}
+
+.dipan-cell-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  user-select: none;
+}
+
+.dipan-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 20px;
+  line-height: 1;
+}
+
+.dipan-num-wx {
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+}
+
+.dipan-num {
+  font-size: 17px;
+  color: #8e24aa; /* 紫色数理 */
+  font-weight: 900;
+}
+
+.dipan-wx {
+  font-size: 14.5px;
+  color: #0288d1; /* 青蓝五行 */
+  margin-left: 2px;
+  font-weight: 800;
+}
+
+.dipan-top-right {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dipan-cur-stem-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  background-color: var(--md-sys-color-primary-container);
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.dipan-jigan-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--md-sys-color-error);
+  background-color: var(--md-sys-color-error-container);
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.dipan-dir-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface-container);
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.dipan-row-mid {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+}
+
+.dipan-zhi-single {
+  font-size: 26px;
+  font-weight: 900;
+  color: #2e7d32; /* 绿色地支 */
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(46, 125, 50, 0.15);
+}
+
+.dipan-zhi-double {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  padding: 0 2px;
+}
+
+.dipan-zhi-double .zhi-first {
+  font-size: 20px;
+  font-weight: 900;
+  color: #2e7d32; /* 绿色 */
+  line-height: 1;
+  transform: translateY(-3px);
+}
+
+.dipan-zhi-double .zhi-second {
+  font-size: 20px;
+  font-weight: 900;
+  color: #2e7d32; /* 绿色 */
+  line-height: 1;
+  transform: translateY(3px);
+}
+
+.dipan-center-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.dipan-center-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--md-sys-color-on-surface);
+}
+
+.dipan-center-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--md-sys-color-outline);
+}
+
+.dipan-row-bot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-top: 3px;
+  border-top: 1px dashed var(--md-sys-color-outline-variant);
+  line-height: 1;
+}
+
+.dipan-trigram {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.dipan-desc {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #d32f2f; /* 红色卦德物象名意 */
+  line-height: 1.1;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .dipan-num {
+  color: #ce93d8; /* 浅紫 */
+}
+
+[data-theme="dark"] .dipan-wx {
+  color: #4fc3f7; /* 浅青 */
+}
+
+[data-theme="dark"] .dipan-zhi-single,
+[data-theme="dark"] .dipan-zhi-double .zhi-first,
+[data-theme="dark"] .dipan-zhi-double .zhi-second {
+  color: #81c784; /* 浅绿 */
+}
+
+[data-theme="dark"] .dipan-desc {
+  color: #ef5350; /* 浅红 */
+}
+
+[data-theme="dark"] .dipan-trigram {
+  color: #ffffff;
+}
+
+/* 地盘研判详情徽章栏 */
+.dipan-detail-overview {
+  margin-bottom: 10px;
+}
+
+.dipan-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dipan-badge-item {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--md-shape-corner-small);
+}
+
+.dipan-badge-item.num {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.dipan-badge-item.wuxing {
+  background-color: #e1f5fe;
+  color: #0277bd;
+}
+
+.dipan-badge-item.bagua {
+  background-color: #ede7f6;
+  color: #512da8;
+}
+
+.dipan-badge-item.dir {
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-outline);
+}
+
+.dipan-badge-item.stem {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.dipan-badge-item.star {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.dipan-badge-item.door {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+[data-theme="dark"] .dipan-badge-item.num {
+  background-color: #4a148c;
+  color: #e1bee7;
+}
+
+[data-theme="dark"] .dipan-badge-item.wuxing {
+  background-color: #01579b;
+  color: #b3e5fc;
+}
+
+[data-theme="dark"] .dipan-badge-item.bagua {
+  background-color: #311b92;
+  color: #d1c4e9;
+}
+
+[data-theme="dark"] .dipan-badge-item.star {
+  background-color: #bf360c;
+  color: #ffe0b2;
+}
+
+[data-theme="dark"] .dipan-badge-item.door {
+  background-color: #1b5e20;
+  color: #c8e6c9;
+}
+
+/* ---------------- 克应研判卡片 ---------------- */
+.keying-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1; /* 撑满左侧栏垂直剩余空间，消除底部大块空白 */
+}
+
+.keying-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.keying-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.keying-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--md-shape-corner-full);
+  background-color: var(--md-sys-color-surface-container-high, #eff1f8);
+  color: var(--md-sys-color-primary, #0055ea);
+  border: 1px solid var(--md-sys-color-outline-variant, #b0b5c0);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  white-space: nowrap;
+}
+
+.keying-toggle-btn:hover {
+  background-color: var(--md-sys-color-primary-container, #d3e3fd);
+  color: var(--md-sys-color-on-primary-container, #041e49);
+  border-color: var(--md-sys-color-primary, #0055ea);
+}
+
+.keying-toggle-btn.is-active {
+  background-color: var(--md-sys-color-primary, #0055ea);
+  color: #ffffff;
+  border-color: var(--md-sys-color-primary, #0055ea);
+}
+
+[data-theme="dark"] .keying-toggle-btn {
+  background-color: #2b2d35;
+  color: #8ab4f8;
+  border-color: #44474f;
+}
+
+[data-theme="dark"] .keying-toggle-btn:hover {
+  background-color: #353842;
+  color: #aecbfa;
+}
+
+[data-theme="dark"] .keying-toggle-btn.is-active {
+  background-color: #8ab4f8;
+  color: #041e49;
+}
+
+.keying-scroll-container {
+  flex: 1;
+  min-height: 180px;
+  max-height: 580px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 6px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--md-sys-color-primary, #0055ea) var(--md-sys-color-surface-container, #eff1f8);
+}
+
+.keying-scroll-container > * {
+  flex-shrink: 0;
+}
+
+.keying-scroll-container::-webkit-scrollbar {
+  width: 9px;
+  display: block;
+}
+
+.keying-scroll-container::-webkit-scrollbar-track {
+  background: var(--md-sys-color-surface-container-high, #e5e8f0);
+  border-radius: 6px;
+}
+
+.keying-scroll-container::-webkit-scrollbar-thumb {
+  background-color: var(--md-sys-color-primary, #0055ea);
+  border-radius: 6px;
+  border: 2px solid var(--md-sys-color-surface-container-high, #e5e8f0);
+  transition: background-color 0.2s ease;
+}
+
+.keying-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--md-sys-color-primary-container, #0041b6);
+}
+
+[data-theme="dark"] .keying-scroll-container {
+  scrollbar-color: #8ab4f8 #1e1f25;
+}
+
+[data-theme="dark"] .keying-scroll-container::-webkit-scrollbar-track {
+  background: #1e1f25;
+}
+
+[data-theme="dark"] .keying-scroll-container::-webkit-scrollbar-thumb {
+  background-color: #8ab4f8;
+  border-color: #1e1f25;
+}
+
+[data-theme="dark"] .keying-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: #aecbfa;
+}
+
+.keying-sec-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--md-sys-color-secondary);
+  background-color: var(--md-sys-color-secondary-container);
+  padding: 3px 8px;
+  border-radius: var(--md-shape-corner-small);
+  display: inline-block;
+  width: fit-content;
+}
+
+.keying-item-card {
+  background-color: var(--md-sys-color-surface-container);
+  border-radius: var(--md-shape-corner-medium);
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.keying-item-key {
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface);
+  margin-right: 6px;
+}
+
+/* ---------------- 天盘实战象意逐项研判样式 ---------------- */
+.tianpan-practical-container {
+  background-color: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-left: 4px solid var(--md-sys-color-primary);
+  border-radius: var(--md-shape-corner-medium);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.practical-card-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  background-color: var(--md-sys-color-primary-container);
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.practical-lines-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.practical-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--md-sys-color-on-surface);
+}
+
+.practical-seq {
+  font-weight: 800;
+  flex-shrink: 0;
+  font-size: 14.5px;
+}
+
+.practical-text {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  word-break: break-all;
+}
+
+/* 各项序号特色色彩 */
+.practical-row:nth-child(1) .practical-seq { color: #8e24aa; }
+.practical-row:nth-child(2) .practical-seq { color: #0288d1; }
+.practical-row:nth-child(3) .practical-seq { color: #d32f2f; }
+.practical-row:nth-child(4) .practical-seq { color: #f57c00; }
+.practical-row:nth-child(5) .practical-seq { color: #2e7d32; }
+.practical-row:nth-child(6) .practical-seq { color: #00897b; }
+
+[data-theme="dark"] .practical-row:nth-child(1) .practical-seq { color: #ce93d8; }
+[data-theme="dark"] .practical-row:nth-child(2) .practical-seq { color: #4fc3f7; }
+[data-theme="dark"] .practical-row:nth-child(3) .practical-seq { color: #ef5350; }
+[data-theme="dark"] .practical-row:nth-child(4) .practical-seq { color: #ffb74d; }
+[data-theme="dark"] .practical-row:nth-child(5) .practical-seq { color: #81c784; }
+[data-theme="dark"] .practical-row:nth-child(6) .practical-seq { color: #4db6ac; }
+
+/* ---------------- 叶鸿生《九宫定位记忆法》专属卡片 ---------------- */
+.memory-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-shape-corner-medium);
+  padding: 10px 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.memory-card-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0277bd;
+  background: #e1f5fe;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+[data-theme="dark"] .memory-card-badge {
+  color: #81d4fa;
+  background: #01579b;
+}
+
+.memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.memory-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.memory-tag {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  min-width: 34px;
+  text-align: center;
+  margin-top: 1px;
+}
+
+.memory-tag.gong { background: #ede7f6; color: #512da8; }
+.memory-tag.star { background: #fff3e0; color: #e65100; }
+.memory-tag.door { background: #e8f5e9; color: #2e7d32; }
+.memory-tag.stem { background: #e3f2fd; color: #1565c0; }
+.memory-tag.branch { background: #e0f2f1; color: #00695c; }
+.memory-tag.current { background: #fce4ec; color: #c2185b; }
+
+[data-theme="dark"] .memory-tag.gong { background: #311b92; color: #d1c4e9; }
+[data-theme="dark"] .memory-tag.star { background: #bf360c; color: #ffccbc; }
+[data-theme="dark"] .memory-tag.door { background: #1b5e20; color: #c8e6c9; }
+[data-theme="dark"] .memory-tag.stem { background: #0d47a1; color: #bbdefb; }
+[data-theme="dark"] .memory-tag.branch { background: #004d40; color: #b2dfdb; }
+[data-theme="dark"] .memory-tag.current { background: #880e4f; color: #f8bbd0; }
+
+.memory-content {
+  flex: 1;
+  color: var(--md-sys-color-on-surface);
+}
+
+.memory-name {
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface);
+  margin-right: 2px;
+}
+
+.memory-desc {
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}
+
+/* ---------------- 天盘实战与六变合并表格卡片 ---------------- */
+.merged-analysis-card {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-shape-corner-medium);
+  overflow: hidden;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+  min-height: min-content;
+}
+
+.merged-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--md-sys-color-surface-container);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.merged-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.merged-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline-variant, #b0b5c0) transparent;
+}
+
+.merged-table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.merged-table-responsive::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.merged-table-responsive::-webkit-scrollbar-thumb {
+  background-color: var(--md-sys-color-outline-variant, #b0b5c0);
+  border-radius: 4px;
+}
+
+.merged-table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.merged-table thead th {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  white-space: nowrap;
+}
+
+.merged-th-tag { width: 78px; min-width: 74px; }
+.merged-th-desc { min-width: 160px; }
+.merged-th-status { width: 125px; min-width: 105px; text-align: right; }
+
+.merged-table tbody tr {
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  transition: background-color 0.15s ease;
+}
+
+.merged-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.merged-cell-tag {
+  width: 78px;
+  min-width: 74px;
+  padding: 8px 10px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.merged-tag-badge {
+  display: inline-block;
+  padding: 2.5px 7px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.merged-tag-badge.gong { background: #e8f0fe; color: #1a73e8; }
+.merged-tag-badge.stem { background: #e6f4ea; color: #137333; }
+.merged-tag-badge.star { background: #fef7e0; color: #b06000; }
+.merged-tag-badge.door { background: #fce8e6; color: #c5221f; }
+.merged-tag-badge.spirit { background: #f3e8fd; color: #8430ce; }
+.merged-tag-badge.keying { background: #fff0f0; color: #d93025; }
+.merged-tag-badge.dunjia { background: #e0f2fe; color: #0284c7; }
+.merged-tag-badge.he { background: #f5f3ff; color: #7c3aed; }
+.merged-tag-badge.xing { background: #fef2f2; color: #dc2626; }
+.merged-tag-badge.energy { background: #ecfdf5; color: #059669; }
+.merged-tag-badge.digan { background: #ecfdf5; color: #059669; }
+.merged-tag-badge.shengwang { background: #eff6ff; color: #2563eb; }
+.merged-tag-badge.yingqi { background: #fef3c7; color: #b45309; }
+.merged-tag-badge.maxing { background: #fee2e2; color: #b91c1c; }
+
+[data-theme="dark"] .merged-tag-badge.gong { background: #1a2a44; color: #8ab4f8; }
+[data-theme="dark"] .merged-tag-badge.stem { background: #132d1d; color: #81c995; }
+[data-theme="dark"] .merged-tag-badge.star { background: #332505; color: #fdd663; }
+[data-theme="dark"] .merged-tag-badge.door { background: #371717; color: #f28b82; }
+[data-theme="dark"] .merged-tag-badge.spirit { background: #2c1a3b; color: #c58af9; }
+[data-theme="dark"] .merged-tag-badge.keying { background: #3d1b1b; color: #f28b82; }
+[data-theme="dark"] .merged-tag-badge.dunjia { background: #0c2d48; color: #7dd3fc; }
+[data-theme="dark"] .merged-tag-badge.he { background: #2e1065; color: #c4b5fd; }
+[data-theme="dark"] .merged-tag-badge.xing { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .merged-tag-badge.energy { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .merged-tag-badge.digan { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .merged-tag-badge.shengwang { background: #1e3a8a; color: #93c5fd; }
+[data-theme="dark"] .merged-tag-badge.yingqi { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .merged-tag-badge.maxing { background: #450a0a; color: #fca5a5; }
+
+.merged-cell-desc {
+  padding: 8px 10px;
+  color: var(--md-sys-color-on-surface);
+  vertical-align: top;
+  font-weight: 500;
+}
+
+.merged-cell-status {
+  width: 125px;
+  min-width: 105px;
+  padding: 8px 10px;
+  vertical-align: top;
+  text-align: right;
+}
+
+.merged-status-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.merged-status-badge.wang { background: #e6f4ea; color: #137333; }
+.merged-status-badge.xiong { background: #fce8e6; color: #c5221f; }
+.merged-status-badge.daxiong { background: #fbd5d5; color: #991b1b; font-weight: 700; }
+.merged-status-badge.ji { background: #e8f0fe; color: #1a73e8; }
+.merged-status-badge.daji { background: #dbeafe; color: #1e40af; font-weight: 700; }
+.merged-status-badge.ping { background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant); }
+.merged-status-badge.special { background: #fef3c7; color: #92400e; }
+
+[data-theme="dark"] .merged-status-badge.wang { background: #132d1d; color: #81c995; }
+[data-theme="dark"] .merged-status-badge.xiong { background: #371717; color: #f28b82; }
+[data-theme="dark"] .merged-status-badge.daxiong { background: #4a1515; color: #fca5a5; }
+[data-theme="dark"] .merged-status-badge.ji { background: #1a2a44; color: #8ab4f8; }
+[data-theme="dark"] .merged-status-badge.daji { background: #172554; color: #93c5fd; }
+[data-theme="dark"] .merged-status-badge.ping { background: #2a2d36; color: #9aa0a6; }
+
+/* ---------------- 象意人象/物象切换与精细排版 ---------------- */
+.desc-header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.desc-header-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  letter-spacing: 0.2px;
+}
+
+.imagery-mode-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--md-sys-color-surface-container, #eef0f5);
+  border: 1px solid var(--md-sys-color-outline-variant, #d0d5dd);
+  border-radius: 14px;
+  padding: 1.5px;
+  gap: 2px;
+}
+
+.imagery-mode-btn {
+  border: none;
+  background: transparent;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 11px;
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  transition: all 0.15s ease;
+  line-height: 1.35;
+  user-select: none;
+}
+
+.imagery-mode-btn:hover {
+  color: var(--md-sys-color-primary, #0055ea);
+  background: rgba(0, 85, 234, 0.08);
+}
+
+[data-theme="dark"] .imagery-mode-group {
+  background: var(--md-sys-color-surface-container-highest, #282b33);
+  border-color: var(--md-sys-color-outline-variant, #40444f);
+}
+
+[data-theme="dark"] .imagery-mode-btn:hover {
+  background: rgba(180, 197, 255, 0.12);
+}
+
+.imagery-mode-btn.active {
+  background: var(--md-sys-color-primary, #0055ea);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+}
+
+[data-theme="dark"] .imagery-mode-btn.active {
+  background: var(--md-sys-color-primary, #b4c5ff);
+  color: #002a77;
+}
+
+/* 单元格象意结构与文字排版 */
+.imagery-cell-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3.5px;
+  padding: 1px 0;
+}
+
+.imagery-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.imagery-aspect-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 4px 6px;
+  line-height: 1.45;
+  font-size: 12.5px;
+}
+
+.imagery-aspect-row.is-jigan {
+  padding-top: 4px;
+  margin-top: 2px;
+  border-top: 1px dashed var(--md-sys-color-outline-variant, #e0e2ec);
+}
+
+.imagery-item-title {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.45;
+}
+
+.imagery-jigan-title {
+  font-weight: 600;
+  color: var(--md-sys-color-secondary, #4355b9);
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.45;
+}
+
+[data-theme="dark"] .imagery-jigan-title {
+  color: #b9c3ff;
+}
+
+/* 在全部模式下，物象行(第二行)的干名占位隐形，使 [物象外观]/[物象材质] 与上一行的 [人象外表]/[人象心性] 严格纵向垂直对齐 */
+.imagery-mode-all .imagery-aspect-row.wu .imagery-item-title,
+.imagery-mode-all .imagery-aspect-row.wu .imagery-jigan-title {
+  visibility: hidden;
+  user-select: none;
+}
+
+/* 在物象模式下，wu行干名正常可见 */
+.imagery-mode-wu .imagery-aspect-row.wu .imagery-item-title,
+.imagery-mode-wu .imagery-aspect-row.wu .imagery-jigan-title {
+  visibility: visible !important;
+}
+
+.imagery-section-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.3;
+  vertical-align: middle;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.imagery-section-badge.wu {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid rgba(3, 105, 161, 0.2);
+}
+
+[data-theme="dark"] .imagery-section-badge.wu {
+  background: #082f49;
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.25);
+}
+
+.imagery-section-badge.ren {
+  background: #fdf4ff;
+  color: #a21caf;
+  border: 1px solid rgba(162, 28, 175, 0.2);
+}
+
+[data-theme="dark"] .imagery-section-badge.ren {
+  background: #3b0764;
+  color: #f0abfc;
+  border-color: rgba(240, 171, 252, 0.25);
+}
+
+.imagery-section-badge.gong {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid rgba(71, 85, 105, 0.2);
+}
+
+[data-theme="dark"] .imagery-section-badge.gong {
+  background: #1e293b;
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.imagery-section-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  line-height: 1.45;
+  font-size: 12.5px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.imagery-mid-dot {
+  color: var(--md-sys-color-outline, #8f909a);
+  margin: 0 1px;
+  font-weight: bold;
+}
+
+.imagery-extra-text {
+  color: var(--md-sys-color-outline, #757680);
+  font-size: 12px;
+}
+
+/* 象意模式控制：物象模式隐藏人象行与人象标签，人象模式隐藏物象行与物象标签 */
+.imagery-mode-wu .imagery-aspect-row.ren,
+.imagery-mode-wu .imagery-section-badge.ren,
+.imagery-mode-wu .imagery-section-text.ren,
+.imagery-mode-wu .imagery-mid-dot {
+  display: none !important;
+}
+
+.imagery-mode-ren .imagery-aspect-row.wu,
+.imagery-mode-ren .imagery-section-badge.wu,
+.imagery-mode-ren .imagery-section-text.wu,
+.imagery-mode-ren .imagery-mid-dot {
+  display: none !important;
+}
+
+/* 十干克应按键切换与排版 */
+.shigan-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.shigan-switch-btn {
+  appearance: none;
+  border: 1px solid var(--md-sys-color-outline-variant, #c4c7c5);
+  background-color: var(--md-sys-color-surface-container-high, #ebedf2);
+  color: var(--md-sys-color-on-surface, #1c1b1f);
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  user-select: none;
+}
+
+.shigan-switch-btn:hover {
+  background-color: var(--md-sys-color-surface-container-highest, #dfe2e8);
+  border-color: var(--md-sys-color-primary, #0055ea);
+}
+
+.shigan-switch-btn.active {
+  background-color: var(--md-sys-color-primary, #0055ea) !important;
+  color: #ffffff !important;
+  border-color: var(--md-sys-color-primary, #0055ea) !important;
+  box-shadow: 0 1px 4px rgba(0, 85, 234, 0.28);
+}
+
+[data-theme="dark"] .shigan-switch-btn {
+  background-color: #242933;
+  color: #e2e8f0;
+  border-color: #3f4756;
+}
+
+[data-theme="dark"] .shigan-switch-btn:hover {
+  background-color: #2e3542;
+  border-color: #8ab4f8;
+}
+
+[data-theme="dark"] .shigan-switch-btn.active {
+  background-color: #8ab4f8 !important;
+  color: #0b1528 !important;
+  border-color: #8ab4f8 !important;
+}
+
+.shigan-desc-display {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--md-sys-color-on-surface);
+}
+
+.merged-classic-block {
+  padding: 8px 12px;
+  background: var(--md-sys-color-surface-container);
+  border-top: 1px dashed var(--md-sys-color-outline-variant);
+}
+
+.merged-classic-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  margin-bottom: 4px;
+}
+
+.merged-classic-item {
+  font-size: 12.5px;
+  color: var(--md-sys-color-on-surface);
+  padding: 2px 0 2px 6px;
+  border-left: 2px solid var(--md-sys-color-primary);
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+.merged-classic-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------------- 叶鸿生《天干六种变化体系》卡片 ---------------- */
+.six-changes-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-left: 4px solid #f57c00;
+  border-radius: var(--md-shape-corner-medium);
+  padding: 10px 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.six-changes-card-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #e65100;
+  background: #fff3e0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+[data-theme="dark"] .six-changes-card-badge {
+  color: #ffb74d;
+  background: #4a2800;
+}
+
+.six-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.six-change-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.six-change-tag {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  min-width: 68px;
+  text-align: center;
+  margin-top: 1px;
+}
+
+.six-change-tag.dunjia { background: #e3f2fd; color: #1565c0; }
+.six-change-tag.he { background: #f3e5f5; color: #7b1fa2; }
+.six-change-tag.xing { background: #ffebee; color: #c62828; }
+.six-change-tag.keying { background: #fff8e1; color: #f57f17; }
+.six-change-tag.energy { background: #e8f5e9; color: #2e7d32; }
+.six-change-tag.shengwang { background: #e0f2f1; color: #00695c; }
+
+[data-theme="dark"] .six-change-tag.dunjia { background: #0d47a1; color: #90caf9; }
+[data-theme="dark"] .six-change-tag.he { background: #4a148c; color: #ce93d8; }
+[data-theme="dark"] .six-change-tag.xing { background: #b71c1c; color: #ef9a9a; }
+[data-theme="dark"] .six-change-tag.keying { background: #f57f17; color: #fff9c4; }
+[data-theme="dark"] .six-change-tag.energy { background: #1b5e20; color: #a5d6a7; }
+[data-theme="dark"] .six-change-tag.shengwang { background: #004d40; color: #80cbc4; }
+
+.six-change-content {
+  flex: 1;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 500;
+  word-break: break-all;
+}
+
+/* ---------------- 万年历卡片 ---------------- */
+.calendar-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cal-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cal-month-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cal-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+  text-align: center;
+}
+
+.cal-table th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-sys-color-outline);
+  padding-bottom: 6px;
+}
+
+.cal-table td {
+  height: 42px;
+  border-radius: var(--md-shape-corner-medium);
+  cursor: pointer;
+  vertical-align: middle;
+  background-color: var(--md-sys-color-surface-container-low);
+  transition: all 0.15s;
+}
+
+.cal-table td:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+}
+
+.cal-table td.selected {
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-elevation-2);
+}
+.cal-table td.selected .cal-lunar-text {
+  color: var(--md-sys-color-primary-container);
+}
+
+.cal-table td.is-other-month {
+  opacity: 0.35;
+}
+
+.cal-day-num {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cal-lunar-text {
+  font-size: 10px;
+  color: var(--md-sys-color-outline);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.cal-terms-banner {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  padding: 8px 14px;
+  border-radius: var(--md-shape-corner-medium);
+  font-size: 12.5px;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ---------------- 设局控制卡片 ---------------- */
+.controls-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ctrl-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.ctrl-group-flex {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* M3 Outlined Select & Input */
+.m3-field-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.m3-input, .m3-select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--md-shape-corner-small);
+  border: 1px solid var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.m3-input:focus, .m3-select:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 1.5px var(--md-sys-color-primary);
+}
+
+/* ---------------- 案例格局卡片 ---------------- */
+.cases-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cases-select-box {
+  width: 100%;
+  height: 70px;
+  border-radius: var(--md-shape-corner-medium);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-size: 13px;
+  padding: 6px;
+  outline: none;
+}
+
+.case-detail-panel {
+  background-color: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-shape-corner-medium);
+  padding: 10px 12px;
+  border: 1px dashed var(--md-sys-color-outline-variant);
+  font-size: 12.5px;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* 快速时间输入与直接编辑时间输入框 */
+.time-quick-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.time-direct-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface-variant);
+  flex-wrap: wrap;
+}
+
+.time-num-input {
+  height: 34px;
+  border-radius: var(--md-shape-corner-small);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 0 4px;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.time-num-input:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary-container);
+}
+
+.cases-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.cases-actions-row .m3-btn {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------------- 底部工具栏与操作栏 ---------------- */
+.m3-bottom-app-bar {
+  background-color: var(--md-sys-color-surface-container);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  position: sticky;
+  bottom: 0;
+  z-index: 90;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.bottom-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 分段胶囊操作按钮组 (M3 Segmented Toolbar Group) */
+.toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-shape-corner-full);
+  padding: 2.5px 3.5px;
+  gap: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.toolbar-group .m3-btn {
+  height: 32px;
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--md-shape-corner-full);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.toolbar-group .m3-btn-filled {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.live-clock-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  padding: 5px 12px;
+  border-radius: var(--md-shape-corner-full);
+  font-size: 12px;
+  color: var(--md-sys-color-outline);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  user-select: none;
+}
+
+.bottom-status-right {
+  display: flex;
+  align-items: center;
+}
+
+#txtLiveClock {
+  font-size: 11.5px;
+  color: var(--md-sys-color-outline);
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  opacity: 0.85;
+}
+
+/* ---------------- 移动端导航栏 ---------------- */
+.m3-navigation-bar {
+  display: none;
+  background-color: var(--md-sys-color-surface-container);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  height: 64px;
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.nav-indicator {
+  width: 48px;
+  height: 28px;
+  border-radius: var(--md-shape-corner-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.nav-item.active .nav-indicator {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.nav-item.active {
+  color: var(--md-sys-color-on-surface);
+  font-weight: 700;
+}
+
+/* ---------------- M3 对话框 (Dialog) ---------------- */
+.m3-dialog-scrim {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.m3-dialog-scrim.open {
+  display: flex;
+}
+
+.m3-dialog {
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-shape-corner-extra-large);
+  padding: 24px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--md-elevation-3);
+  animation: dialogPop 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes dialogPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.m3-dialog-headline {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.m3-dialog-body {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.m3-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ---------------- M3 系统设置对话框 ---------------- */
+.settings-dialog {
+  max-width: 620px;
+  width: 95vw;
+  padding: 20px 20px 16px;
+}
+
+.settings-section {
+  background: var(--md-sys-color-surface-container, #f3f4f8);
+  border: 1px solid var(--md-sys-color-outline-variant, #e0e2ec);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+[data-theme="dark"] .settings-section {
+  background: var(--md-sys-color-surface-container-high, #23262e);
+  border-color: var(--md-sys-color-outline-variant, #393c46);
+}
+
+.settings-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .settings-row {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  white-space: nowrap;
+}
+
+.settings-seg {
+  flex-shrink: 0;
+}
+
+.settings-seg .m3-segment-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .settings-dialog {
+    padding: 16px 12px 12px;
+  }
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .settings-seg {
+    width: 100%;
+    display: flex;
+  }
+  .settings-seg .m3-segment-btn {
+    flex: 1;
+    text-align: center;
+    padding: 4px 2px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+}
+
+/* ---------------- M3 Snackbar (提示气泡) ---------------- */
+.m3-snackbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background-color: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  padding: 12px 22px;
+  border-radius: var(--md-shape-corner-full);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--md-elevation-3);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+  z-index: 2000;
+}
+
+.m3-snackbar.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------------- 响应式断点系统 ---------------- */
+@media (max-width: 900px) {
+  #btnToggleSimple {
+    display: none !important;
+  }
+
+  .app-subtitle {
+    display: none;
+  }
+
+  .app-content {
+    padding: 10px 10px calc(80px + env(safe-area-inset-bottom)) 10px;
+  }
+
+  .main-grid {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+
+  .left-column, .right-column {
+    display: none;
+  }
+
+  .left-column.tab-active, .right-column.tab-active {
+    display: flex;
+  }
+
+  .m3-bottom-app-bar {
+    display: none;
+  }
+
+  .m3-navigation-bar {
+    display: flex;
+    height: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .info-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .info-line-item {
+    width: 100%;
+    align-items: baseline;
+  }
+
+  .info-content-wrap {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    min-width: 0;
+  }
+
+  .info-headline-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ganzhi-display {
+    font-size: 17px;
+    letter-spacing: 1px;
+  }
+
+  .nine-grid {
+    aspect-ratio: 1 / 1;
+    max-width: 350px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .m3-top-app-bar {
+    height: 56px;
+    padding: 0 10px;
+  }
+
+  .top-bar-leading {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .app-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .app-title {
+    font-size: 16px;
+    white-space: nowrap;
+  }
+
+  .top-bar-actions {
+    gap: 4px;
+  }
+
+  .top-bar-actions .toolbar-group {
+    padding: 2px 3px;
+  }
+
+  .top-bar-actions .toolbar-group .m3-btn {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12.5px;
+  }
+
+  .m3-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .m3-icon-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .board-title-hint {
+    display: none;
+  }
+
+  .nine-grid {
+    gap: 5px;
+    padding: 5px;
+    max-width: 330px;
+  }
+
+  .palace-cell {
+    padding: 6px 4px;
+  }
+
+  .cell-row-top {
+    gap: 4px;
+    padding: 0 1px;
+  }
+
+  .cell-row-mid,
+  .cell-row-bot {
+    gap: 4px;
+    padding: 0 4px;
+  }
+
+  .spirit-tag,
+  .star-name,
+  .door-name {
+    width: 36px;
+    min-width: 36px;
+    font-size: 13.5px;
+    padding: 1px 2px;
+  }
+
+  .cell-center-content {
+    font-size: 28px;
+  }
+
+  .badge-ma, .badge-kong {
+    font-size: 11px;
+  }
+
+  .tian-jigan, .di-jigan {
+    font-size: 11.5px;
+    line-height: 1;
+  }
+
+  .tian-jigan-stem, .di-jigan-stem {
+    font-size: 18px;
+  }
+
+  .star-name .star-qin {
+    font-size: 14px;
+  }
+
+  .angan-tag {
+    font-size: 11.5px;
+  }
+}
+
+@media (min-width: 901px) {
+  .calendar-card, .controls-card, .cases-card {
+    display: flex !important;
+  }
+
+  .left-column, .right-column {
+    display: flex !important;
+  }
+}
+
+/* ---------------- 查找格局检索系统样式 (Find Pattern M3) ---------------- */
+.search-pattern-dialog {
+  max-width: 680px;
+  width: 95%;
+  padding: 22px;
+}
+
+.search-section-box {
+  background-color: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.search-row-flex {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-time-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.search-field-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  white-space: nowrap;
+}
+
+.search-dt-input {
+  flex: 1;
+  height: 36px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.search-quick-ranges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.m3-chip-btn {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 16px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.m3-chip-btn:hover {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.m3-chip-btn.active {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-color: var(--md-sys-color-primary);
+  font-weight: 600;
+}
+
+.search-criteria-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.search-ctrl-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-candidate-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--md-sys-color-surface);
+  border-radius: 8px;
+  border: 1px dashed var(--md-sys-color-outline-variant);
+  margin-bottom: 10px;
+}
+
+.search-candidate-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.candidate-chip {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
+  user-select: none;
+  transition: all 0.15s;
+}
+
+.candidate-chip:hover {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.candidate-chip.active {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-color: var(--md-sys-color-primary);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.search-code-preview {
+  font-family: Consolas, "Cascadia Code", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  padding: 10px;
+  height: 160px;
+  resize: vertical;
+  tab-size: 4;
+  white-space: pre;
+}
+
+.search-results-box {
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--md-sys-color-surface);
+  border-radius: 8px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  padding: 6px;
+}
+
+.search-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.search-result-item:hover {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-color: var(--md-sys-color-outline-variant);
+}
+
+.search-result-item .sr-time {
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  font-family: Consolas, monospace;
+  font-size: 13.5px;
+}
+
+.search-result-item .sr-info {
+  font-size: 12.5px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.search-empty-msg {
+  text-align: center;
+  padding: 18px;
+  color: var(--md-sys-color-outline);
+  font-size: 13px;
+}
+
+.search-action-banner > div {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .search-pattern-dialog {
+    padding: 16px 14px;
+    width: 96%;
+    max-height: 90vh;
+  }
+  .search-time-group {
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 100%;
+  }
+  .search-dt-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .search-row-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-criteria-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-ctrl-unit {
+    justify-content: space-between;
+  }
+  .search-ctrl-unit select {
+    flex: 1;
+  }
+  .search-code-preview {
+    height: 120px;
+    font-size: 12px;
+  }
+}
+
+/* ---------------- 选取用神与问事弹窗 ---------------- */
+.modal-yongshen-dialog {
+  max-width: 680px;
+  width: 94vw;
+  max-height: 86vh;
+}
+
+.yongshen-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.yongshen-label-hint {
+  font-size: 12px;
+  color: var(--md-sys-color-outline);
+  font-weight: normal;
+}
+
+.yongshen-qchip {
+  background-color: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.yongshen-qchip:hover {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: var(--md-sys-color-primary);
+}
+
+.ys-group-box {
+  margin-top: 10px;
+  background-color: var(--md-sys-color-surface-container-lowest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.ys-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--md-sys-color-outline);
+  margin-bottom: 6px;
+}
+
+.ys-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ys-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.ys-chip:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+  border-color: var(--md-sys-color-primary);
+}
+
+.ys-chip input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--md-sys-color-primary);
+}
+
+.ys-chip.active {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: var(--md-sys-color-primary);
+  font-weight: 500;
+}
+
+.yongshen-selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+  align-items: center;
+}
+
+.yongshen-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.yongshen-tag-pill.tag-zhifu {
+  background-color: #d97706;
+  color: #ffffff;
+}
+
+.yongshen-tag-pill .remove-btn {
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.8;
+  margin-left: 2px;
+}
+
+.yongshen-tag-pill .remove-btn:hover {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .board-card-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .board-card-center {
+    order: 3;
+    max-width: 100%;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 12.5px;
+    padding: 3px 10px;
+  }
+}
+
+/* ---------------- 手动录入奇门盘面 Dialog 样式 ---------------- */
+.modal-manual-dialog {
+  border-radius: var(--md-shape-corner-large);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+}
+
+.manual-mode-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.manual-gz-card select {
+  cursor: pointer;
+  background-color: var(--md-sys-color-surface);
+}
+
+.manual-intro-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.manual-preview-card {
+  transition: all 0.2s ease;
+}
+
+/* ---------------- 全盘克应速查与用神过滤样式 ---------------- */
+.modal-keying-actions {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modal-keying-right-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .modal-keying-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .modal-keying-right-actions {
+    justify-content: flex-end !important;
+    flex-wrap: wrap !important;
+  }
+}
+
+.keying-palace-title-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.keying-palace-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  line-height: 1.2;
+}
+
+.keying-palace-badge.is-yongshen-badge {
+  background: #e8f0fe;
+  color: #0055ea;
+  border: 1px solid #c2e7ff;
+}
+
+.keying-palace-badge.is-opposite-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px dashed #38bdf8;
+}
+
+.keying-palace-notice {
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.keying-palace-notice.is-kong-notice {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.keying-palace-notice.is-opp-notice {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+/* ========================================================
+   盘面手动圈选用神模式 (Manual Grid Picking Mode)
+   ======================================================== */
+
+/* 九宫格在圈选模式下的状态指示与交互 */
+.nine-grid.grid-picking-mode {
+  outline: 2.5px solid var(--md-sys-color-primary, #1a73e8);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .nine-grid.grid-picking-mode {
+  outline-color: #8ab4f8;
+}
+
+.nine-grid.grid-picking-mode .palace-cell {
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.nine-grid.grid-picking-mode .palace-cell:hover {
+  box-shadow: inset 0 0 0 2px var(--md-sys-color-primary, #1a73e8);
+}
+
+.nine-grid.grid-picking-mode #cellGong5 {
+  cursor: default;
+}
+
+.nine-grid.grid-picking-mode #cellGong5:hover {
+  box-shadow: none;
+}
+
+.nine-grid.grid-picking-mode .cell-center-content {
+  cursor: default !important;
+}
+
+/* 圈选模式下所有要素悬停 affordance 与点击样式 */
+.nine-grid.grid-picking-mode .spirit-tag,
+.nine-grid.grid-picking-mode .star-name,
+.nine-grid.grid-picking-mode .door-name,
+.nine-grid.grid-picking-mode .tian-gan,
+.nine-grid.grid-picking-mode .tian-jigan-stem,
+.nine-grid.grid-picking-mode .di-gan,
+.nine-grid.grid-picking-mode .di-jigan-stem,
+.nine-grid.grid-picking-mode .badge-kong,
+.nine-grid.grid-picking-mode .badge-ma {
+  cursor: pointer !important;
+  border-radius: 4px;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.nine-grid.grid-picking-mode .spirit-tag:hover,
+.nine-grid.grid-picking-mode .star-name:hover,
+.nine-grid.grid-picking-mode .door-name:hover,
+.nine-grid.grid-picking-mode .tian-gan:hover,
+.nine-grid.grid-picking-mode .tian-jigan-stem:hover,
+.nine-grid.grid-picking-mode .di-gan:hover,
+.nine-grid.grid-picking-mode .di-jigan-stem:hover,
+.nine-grid.grid-picking-mode .badge-kong:hover,
+.nine-grid.grid-picking-mode .badge-ma:hover {
+  outline: 1.5px dashed var(--md-sys-color-primary, #1a73e8);
+  background-color: rgba(26, 115, 232, 0.14) !important;
+}
+
+/* 盘面已选用神符号高亮类 (常规用神为朱砂红，值符为琥珀金) */
+.is-picked-symbol {
+  position: relative;
+  box-shadow: 0 0 0 1.5px #d32f2f, 0 1px 4px rgba(211, 47, 47, 0.25) !important;
+  background-color: rgba(211, 47, 47, 0.12) !important;
+  border-radius: 4px;
+}
+
+.is-picked-symbol.is-fu,
+.is-picked-symbol.is-zhifu-symbol {
+  box-shadow: 0 0 0 1.5px #d97706, 0 1px 4px rgba(217, 119, 6, 0.25) !important;
+  background-color: rgba(217, 119, 6, 0.15) !important;
+}
+
+[data-theme="dark"] .is-picked-symbol {
+  box-shadow: 0 0 0 1.5px #ff897d, 0 1px 4px rgba(255, 137, 125, 0.35) !important;
+  background-color: rgba(255, 137, 125, 0.18) !important;
+}
+
+[data-theme="dark"] .is-picked-symbol.is-fu,
+[data-theme="dark"] .is-picked-symbol.is-zhifu-symbol {
+  box-shadow: 0 0 0 1.5px #fbbf24, 0 1px 4px rgba(251, 191, 36, 0.35) !important;
+  background-color: rgba(251, 191, 36, 0.2) !important;
+}
+
+/* 盘面圈选用神浮动操作条 */
+.grid-pick-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 560px);
+  z-index: 1050;
+  background: var(--md-sys-color-surface-container-high, #ffffff);
+  border: 1.5px solid var(--md-sys-color-primary, #1a73e8);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 12px 16px;
+  box-sizing: border-box;
+  animation: slideUpPickBar 0.22s ease-out;
+}
+
+[data-theme="dark"] .grid-pick-bar {
+  background: var(--md-sys-color-surface-container-high, #252a34);
+  border-color: #8ab4f8;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 600px) {
+  .grid-pick-bar {
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+}
+
+@keyframes slideUpPickBar {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.grid-pick-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.grid-pick-title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.grid-pick-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--md-sys-color-primary, #1a73e8);
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+}
+
+.grid-pick-tip {
+  font-size: 11.5px;
+  color: var(--md-sys-color-outline, #666);
+}
+
+.grid-pick-close-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--md-sys-color-outline, #666);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+}
+
+.grid-pick-close-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--md-sys-color-on-surface, #111);
+}
+
+.grid-pick-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  max-height: 80px;
+  overflow-y: auto;
+  align-items: center;
+  padding: 4px 6px;
+  background: var(--md-sys-color-surface-container-low, #f4f6f8);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+[data-theme="dark"] .grid-pick-tags-row {
+  background: var(--md-sys-color-surface-container-low, #1b2028);
+}
+
+.grid-pick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 14px;
+  background: rgba(211, 47, 47, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(211, 47, 47, 0.3);
+}
+
+.grid-pick-chip.ys-chip-zhifu {
+  background: rgba(217, 119, 6, 0.14);
+  color: #92400e;
+  border: 1px solid rgba(217, 119, 6, 0.4);
+}
+
+[data-theme="dark"] .grid-pick-chip {
+  background: rgba(255, 137, 125, 0.16);
+  color: #ff897d;
+  border-color: rgba(255, 137, 125, 0.4);
+}
+
+[data-theme="dark"] .grid-pick-chip.ys-chip-zhifu {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.grid-pick-chip .pick-remove {
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0 2px;
+}
+
+.grid-pick-chip .pick-remove:hover {
+  opacity: 1;
+}
+
+.grid-pick-empty-hint {
+  font-size: 12px;
+  color: var(--md-sys-color-outline, #888);
+  padding: 2px 4px;
+}
+
+.grid-pick-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid-pick-left-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ========================================================
+   宫位要素快捷弹窗双栏卡片精致排版 (Palace Elements Picker)
+   ======================================================== */
+.modal-palace-picker-dialog {
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
+}
+
+.palace-picker-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 440px) {
+  .palace-picker-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.palace-picker-card {
+  background: var(--md-sys-color-surface-container-low, #f8fafc);
+  border: 1px solid var(--md-sys-color-outline-variant, #e2e8f0);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme="dark"] .palace-picker-card {
+  background: var(--md-sys-color-surface-container-low, #1e232d);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.palace-picker-card-header {
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px dashed var(--md-sys-color-outline-variant, #e2e8f0);
+}
+
+[data-theme="dark"] .palace-picker-card-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.palace-picker-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--md-sys-color-primary, #1a73e8);
+  letter-spacing: 0.5px;
+}
+
+[data-theme="dark"] .palace-picker-section-title {
+  color: #8ab4f8;
+}
+
+.palace-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  min-height: 32px;
+}
+
+.palace-picker-row:last-child {
+  margin-bottom: 0;
+}
+
+.palace-picker-row-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--md-sys-color-outline, #64748b);
+  width: 32px;
+  flex-shrink: 0;
+  text-align: right;
+  line-height: 1;
+}
+
+.palace-picker-row-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex: 1;
+}
+
+.palace-picker-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--md-sys-color-surface-container-high, #ffffff);
+  border: 1px solid var(--md-sys-color-outline-variant, #d0d7de);
+  color: var(--md-sys-color-on-surface, #1e293b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1.2;
+}
+
+.palace-picker-chip:hover {
+  border-color: var(--md-sys-color-primary, #1a73e8);
+  background: rgba(26, 115, 232, 0.06);
+}
+
+.palace-picker-chip.active {
+  background: rgba(211, 47, 47, 0.12) !important;
+  border-color: #d32f2f !important;
+  color: #b91c1c !important;
+  box-shadow: 0 0 0 1px #d32f2f;
+}
+
+.palace-picker-chip.active.is-zhifu {
+  background: rgba(217, 119, 6, 0.14) !important;
+  border-color: #d97706 !important;
+  color: #92400e !important;
+  box-shadow: 0 0 0 1px #d97706;
+}
+
+[data-theme="dark"] .palace-picker-chip {
+  background: var(--md-sys-color-surface-container-high, #2b303c);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .palace-picker-chip:hover {
+  border-color: #8ab4f8;
+  background: rgba(138, 180, 248, 0.1);
+}
+
+[data-theme="dark"] .palace-picker-chip.active {
+  background: rgba(255, 137, 125, 0.18) !important;
+  border-color: #ff897d !important;
+  color: #ff897d !important;
+  box-shadow: 0 0 0 1px #ff897d;
+}
+
+[data-theme="dark"] .palace-picker-chip.active.is-zhifu {
+  background: rgba(251, 191, 36, 0.2) !important;
+  border-color: #fbbf24 !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 0 1px #fbbf24;
+}
+
+.palace-picker-chip .chip-note {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.palace-picker-chip .chip-check {
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 3px;
+}
+
+
+
+
+

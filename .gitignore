@@ -1,0 +1,24 @@
+# Tests and scratch scripts
+test_*.py
+check_*.py
+check_*.mjs
+scratch_*.py
+compare_*.py
+build_data.py
+create_shortcut.py
+allow_lan.ps1
+start.vbs
+*.lnk
+
+# Screenshots and temp images
+*.png
+!icons/*.png
+
+# Certificates and keys
+server.key
+server.crt
+
+# System & Cache
+__pycache__/
+.DS_Store
+Thumbs.db

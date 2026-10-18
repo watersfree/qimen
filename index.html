@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>奇门遁甲专业排盘</title>
+  <meta name="theme-color" content="#1e53b7">
+  <meta name="description" content="Material Design 3 风格的高精度奇门遁甲排盘系统 (拆补/置闰/茅山/转盘/飞盘/真太阳时/全套克应速查)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="奇门排盘">
+  
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./favicon.ico">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+  <!-- M3 Top App Bar -->
+  <header class="m3-top-app-bar">
+    <div class="top-bar-leading">
+      <img src="./icons/icon.svg" alt="奇门标识" class="app-logo">
+      <div class="app-title-group">
+        <span class="app-title">奇门遁甲排盘</span>
+        <span class="app-subtitle">高精度天文历法 · 时家奇门系统</span>
+      </div>
+    </div>
+    <div class="top-bar-actions">
+      <!-- 模式与速查胶囊组 (设计参考下方导航栏UI) -->
+      <div class="toolbar-group">
+        <button class="m3-btn m3-btn-tonal" id="btnToggleSimple" title="切换简洁/完整布局">简洁模式</button>
+        <button class="m3-btn m3-btn-tonal" id="btnTopKeying" title="速查九宫全盘综合克应研判">全盘克应</button>
+      </div>
+      <button class="m3-icon-btn" id="btnToggleTheme" title="切换深色/浅色主题">
+        <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+      </button>
+      <button class="m3-icon-btn" id="btnSettings" title="设置">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主工作区 -->
+  <main class="app-content" id="appMainContainer">
+    <div class="main-grid">
+      
+      <!-- 左栏: 基本信息、九宫格、克应研判 -->
+      <div class="left-column tab-active" id="leftPanel">
+        
+        <!-- 头部信息卡片 -->
+        <section class="m3-card m3-card-elevated info-overview-card">
+          <!-- 核心四柱与定局局象横幅 -->
+          <div class="info-headline-bar">
+            <div class="ganzhi-banner">
+              <span class="ganzhi-tag">四柱干支</span>
+              <span class="ganzhi-display" id="txtGanzhi">丙午  戊戌  丁卯  辛亥</span>
+            </div>
+            <div class="ju-banner">
+              <span class="badge-pill-primary" id="txtJuDesc">霜降上元阴五局</span>
+              <span class="badge-tag-tonal" id="txtMethodDesc">置闰排宫法</span>
+            </div>
+          </div>
+
+          <!-- 详细历法与符使参数列表 (杜绝重叠与超出) -->
+          <div class="info-card-list">
+            <div class="info-line-item info-item-secondary">
+              <span class="info-title">公历时刻</span>
+              <div class="info-content-wrap">
+                <span class="info-value" id="txtSolarTime">2026年10月20日 21:12</span>
+                <span class="info-badge-tag" id="txtWeekDay">星期二</span>
+              </div>
+            </div>
+            <div class="info-line-item info-item-secondary">
+              <span class="info-title">农历日期</span>
+              <div class="info-content-wrap">
+                <span class="info-value" id="txtLunarDate">丙午年 九月大 十一日</span>
+                <span class="info-badge-tag" id="txtShichenDesc">入定 亥时</span>
+              </div>
+            </div>
+
+            <div class="info-line-item info-item-secondary">
+              <span class="info-title">真太阳时</span>
+              <div class="info-content-wrap">
+                <span class="info-value info-value-primary" id="txtTrueTime">2026年10月20日 21:13</span>
+                <span class="info-sub-text" id="txtLocation">北京 (116.38°)</span>
+              </div>
+            </div>
+            <div class="info-line-item info-item-secondary">
+              <span class="info-title">节气时刻</span>
+              <div class="info-content-wrap">
+                <span class="info-value" id="txtCurTerm">寒露 10-08 14:29</span>
+                <span class="info-sub-text" id="txtNextTerm">次节 霜降 10-23 17:37</span>
+              </div>
+            </div>
+
+            <div class="info-line-item">
+              <span class="info-title">旬空旬首</span>
+              <div class="info-content-wrap">
+                <span class="info-value" id="txtKongwang">寅卯  辰巳  戌亥  <span class="info-value-error">寅卯</span></span>
+                <span class="info-sub-text">旬首: <strong class="info-value-error" id="txtXunshou">甲辰</strong></span>
+              </div>
+            </div>
+            <div class="info-line-item">
+              <span class="info-title">符使指引</span>
+              <div class="info-content-wrap">
+                <span class="info-value fushi-line">
+                  值符<strong id="txtStarFu">天蓬</strong>落<strong id="txtFuGong">二</strong>宫 · 
+                  值使<strong id="txtDoorShi">休门</strong>落<strong id="txtDoorGong">三</strong>宫
+                </span>
+              </div>
+            </div>
+            <div class="info-line-item info-item-pattern" id="itemWuBuYuRow" style="display: none;">
+              <span class="info-title">时辰大像</span>
+              <div class="info-content-wrap">
+                <span class="info-value info-value-error" id="txtWuBuYuDesc"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 九宫盘面卡片 -->
+        <section class="m3-card m3-card-elevated board-card" id="boardCardSection">
+          <div class="board-card-header">
+            <div class="board-card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+              <span>九宫盘面</span>
+            </div>
+            <div class="board-card-center" id="boardCardCenter" title="点击设置所问问题与选取用神"></div>
+            <label class="m3-switch-label" title="切换地盘全息信息或天盘视图">
+              <span id="txtToggleDipanLabel">切换地盘</span>
+              <div class="m3-switch">
+                <input type="checkbox" id="chkToggleDipan">
+                <span class="m3-slider"></span>
+              </div>
+            </label>
+          </div>
+
+          <!-- 3x3 九宫网格 -->
+          <div class="nine-grid" id="nineGrid">
+            <!-- 巽四 (Southeast) -->
+            <div class="palace-cell" data-gong="4" id="cellGong4"></div>
+            <!-- 离九 (South) -->
+            <div class="palace-cell" data-gong="9" id="cellGong9"></div>
+            <!-- 坤二 (Southwest) 默认选中 -->
+            <div class="palace-cell selected" data-gong="2" id="cellGong2"></div>
+
+            <!-- 震三 (East) -->
+            <div class="palace-cell" data-gong="3" id="cellGong3"></div>
+            <!-- 中五 (Center) -->
+            <div class="palace-cell" data-gong="5" id="cellGong5"></div>
+            <!-- 兑七 (West) -->
+            <div class="palace-cell" data-gong="7" id="cellGong7"></div>
+
+            <!-- 艮八 (Northeast) -->
+            <div class="palace-cell" data-gong="8" id="cellGong8"></div>
+            <!-- 坎一 (North) -->
+            <div class="palace-cell" data-gong="1" id="cellGong1"></div>
+            <!-- 乾六 (Northwest) -->
+            <div class="palace-cell" data-gong="6" id="cellGong6"></div>
+          </div>
+        </section>
+
+        <!-- 宫位克应研判卡片 -->
+        <section class="m3-card m3-card-outlined keying-card">
+          <div class="keying-card-header">
+            <div class="keying-card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              <span id="keyingTitle">『坤宫』克应研判</span>
+            </div>
+            <button class="m3-btn-subtle keying-toggle-btn" id="btnToggleKeyingDetail" type="button" title="点击展开天盘干、门状态、地盘干">
+              <span class="toggle-text" id="txtToggleKeyingDetail">展开详细</span>
+            </button>
+          </div>
+          <div class="keying-scroll-container" id="keyingContent">
+            <!-- 动态生成克应条目 -->
+          </div>
+        </section>
+
+      </div>
+
+      <!-- 右栏: 万年历、参数设定、格局案例库 -->
+      <div class="right-column" id="rightPanel">
+
+        <!-- 万年历卡片 -->
+        <section class="m3-card m3-card-elevated calendar-card">
+          <div class="cal-top-row">
+            <div class="cal-month-title">
+              <span id="calLunarYearTitle">农历: 丙午天河水『马』年</span>
+            </div>
+            <div class="cal-nav-actions">
+              <select id="selCalYear" class="m3-select" style="height: 34px; padding: 0 8px;"></select>
+              <select id="selCalMonth" class="m3-select" style="height: 34px; padding: 0 8px;"></select>
+              <button class="m3-btn m3-btn-tonal" id="btnPrevMonth" style="height: 34px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;" title="上一月">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+              </button>
+              <button class="m3-btn m3-btn-tonal" id="btnNextMonth" style="height: 34px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;" title="下一月">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+              </button>
+              <button class="m3-btn m3-btn-filled" id="btnCalNow" style="height: 34px; padding: 0 14px;">今天</button>
+            </div>
+          </div>
+
+          <table class="cal-table" id="calTable">
+            <thead>
+              <tr>
+                <th style="color: var(--md-sys-color-error);">日</th>
+                <th>一</th>
+                <th>二</th>
+                <th>三</th>
+                <th>四</th>
+                <th>五</th>
+                <th style="color: var(--md-sys-color-error);">六</th>
+              </tr>
+            </thead>
+            <tbody id="calTableBody">
+              <!-- 动态日历日期表格 -->
+            </tbody>
+          </table>
+
+          <div class="cal-terms-banner">
+            <span id="calTermCur">寒露: 10月08日 14:29</span>
+            <span id="calTermNext">霜降: 10月23日 17:37</span>
+          </div>
+        </section>
+
+        <!-- 设局控制卡片 -->
+        <section class="m3-card m3-card-outlined controls-card">
+          <div class="ctrl-section-title">定局与排盘规则</div>
+          
+          <div class="ctrl-group-flex">
+            <!-- 定局方式 Segmented Button -->
+            <div class="m3-segmented-button-group" id="segDingjuGroup">
+              <button class="m3-segment-btn" data-value="chaibu">拆补法</button>
+              <button class="m3-segment-btn active" data-value="zhirun">置闰法</button>
+              <button class="m3-segment-btn" data-value="maoshan">茅山法</button>
+            </div>
+
+            <!-- 排盘方式 Segmented Button -->
+            <div class="m3-segmented-button-group" id="segPaipanGroup">
+              <button class="m3-segment-btn active" data-value="zhuan">排宫法 (转盘)</button>
+              <button class="m3-segment-btn" data-value="fei">飞宫法 (飞盘)</button>
+            </div>
+
+            <!-- 指定局数 -->
+            <select id="selManualJu" class="m3-select">
+              <option value="auto">自动起局</option>
+              <optgroup label="阳遁">
+                <option value="阳1">阳一局</option><option value="阳2">阳二局</option>
+                <option value="阳3">阳三局</option><option value="阳4">阳四局</option>
+                <option value="阳5">阳五局</option><option value="阳6">阳六局</option>
+                <option value="阳7">阳七局</option><option value="阳8">阳八局</option>
+                <option value="阳9">阳九局</option>
+              </optgroup>
+              <optgroup label="阴遁">
+                <option value="阴1">阴一局</option><option value="阴2">阴二局</option>
+                <option value="阴3">阴三局</option><option value="阴4">阴四局</option>
+                <option value="阴5">阴五局</option><option value="阴6">阴六局</option>
+                <option value="阴7">阴七局</option><option value="阴8">阴八局</option>
+                <option value="阴9">阴九局</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="ctrl-section-title">真太阳时校正</div>
+          <div class="m3-field-group">
+            <select id="selProvince" class="m3-select"></select>
+            <select id="selCity" class="m3-select"></select>
+            <label style="font-size: 13px; display: flex; align-items: center; gap: 4px;">
+              经度:
+              <input type="number" id="numLongitude" class="m3-input" step="0.01" style="width: 80px;" value="116.38">°
+            </label>
+          </div>
+
+          <div class="ctrl-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>起局时刻微调</span>
+            <span style="font-size: 11.5px; color: var(--md-sys-color-outline); font-weight: normal;">支持键盘直输与快速识别</span>
+          </div>
+
+          <!-- 快速输入公历时间或四柱干支栏 -->
+          <div class="time-quick-input-row">
+            <input type="text" id="iptPanQuickTime" class="m3-input" placeholder="输入四柱（如：壬寅 乙巳 壬申 庚戌）或公历时间（如：2026-10-20 21:12、2022年5月18日20点）">
+            <button class="m3-btn m3-btn-filled" id="btnQuickTimeApply" type="button" title="识别并快速起盘">识别起盘</button>
+          </div>
+
+          <!-- 年月日时分直接键盘可编辑数字输入框 -->
+          <div class="m3-field-group time-direct-inputs">
+            <input type="number" id="selPanYear" class="m3-input time-num-input" min="1900" max="2100" placeholder="年">年
+            <input type="number" id="selPanMonth" class="m3-input time-num-input" min="1" max="12" placeholder="月">月
+            <input type="number" id="selPanDay" class="m3-input time-num-input" min="1" max="31" placeholder="日">日
+            <input type="number" id="selPanHour" class="m3-input time-num-input" min="0" max="23" placeholder="时">时
+            <input type="number" id="selPanMinute" class="m3-input time-num-input" min="0" max="59" placeholder="分">分
+            <button class="m3-btn m3-btn-tonal" id="btnExecutePan" style="height: 34px; padding: 0 14px; font-weight: 700;">起盘</button>
+          </div>
+
+          <div class="m3-field-group baoshi-baoshu-row" style="padding-top: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div class="ctrl-sub-group" style="display: flex; align-items: center; gap: 6px;">
+              <span class="ctrl-sub-label" style="font-size: 13px; font-weight: 600; color: var(--md-sys-color-outline);">报时起局:</span>
+              <select id="selBaoshiHour" class="m3-select" style="min-width: 120px;">
+                <option value="default" selected>默认</option>
+                <option value="0">23-01  子时</option>
+                <option value="2">01-03  丑时</option>
+                <option value="4">03-05  寅时</option>
+                <option value="6">05-07  卯时</option>
+                <option value="8">07-09  辰时</option>
+                <option value="10">09-11  巳时</option>
+                <option value="12">11-13  午时</option>
+                <option value="14">13-15  未时</option>
+                <option value="16">15-17  申时</option>
+                <option value="18">17-19  酉时</option>
+                <option value="20">19-21  戌时</option>
+                <option value="22">21-23  亥时</option>
+              </select>
+            </div>
+
+            <div class="ctrl-sub-group" style="display: flex; align-items: center; gap: 6px;">
+              <span class="ctrl-sub-label" style="font-size: 13px; font-weight: 600; color: var(--md-sys-color-outline);">报数起局:</span>
+              <input type="number" id="iptBaoShu" class="m3-input" style="width: 80px; text-align: center;" placeholder="输入数字" min="1">
+              <span id="txtBaoshuRem" style="font-weight: 700; color: var(--md-sys-color-primary); font-size: 14px; min-width: 44px;">余：-</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 案例格局卡片 -->
+        <section class="m3-card m3-card-outlined cases-card">
+          <div class="ctrl-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>格局案例库 (点击预览/双击起局)</span>
+            <span style="font-size: 12px; color: var(--md-sys-color-outline);" id="txtCaseCount">0 个案例</span>
+          </div>
+          <select class="cases-select-box" id="selCaseList" size="3"></select>
+
+          <!-- 选中案例的详情预览区 (支持阅读问题、笔记与局象并一键复原) -->
+          <div id="caseDetailPanel" class="case-detail-panel" style="display: none; background: var(--md-sys-color-surface-container-high); border-radius: 8px; padding: 10px 12px; border: 1px dashed var(--md-sys-color-outline-variant); font-size: 12.5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <strong style="color: var(--md-sys-color-primary);" id="caseDetailTitle">案例详情</strong>
+              <span style="font-size: 11px; color: var(--md-sys-color-outline);" id="caseDetailTime"></span>
+            </div>
+            <div id="caseDetailSummary" style="font-size: 11.5px; color: var(--md-sys-color-primary); margin-bottom: 4px; font-weight: 600;"></div>
+            <div style="margin-bottom: 4px;">
+              <span style="color: var(--md-sys-color-outline);">所问问题：</span>
+              <span id="caseDetailQuestion" style="color: var(--md-sys-color-on-surface); font-weight: 500;"></span>
+            </div>
+            <div style="margin-bottom: 6px;">
+              <span style="color: var(--md-sys-color-outline);">断语笔记：</span>
+              <div id="caseDetailRemark" style="color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; max-height: 80px; overflow-y: auto; background: var(--md-sys-color-surface-container-lowest); padding: 4px 8px; border-radius: 4px; margin-top: 2px;"></div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+              <button class="m3-btn m3-btn-tonal" type="button" id="btnDetailEditCase" style="height: 32px; font-size: 12.5px; padding: 0 10px;">编辑此案例</button>
+              <button class="m3-btn m3-btn-filled" type="button" id="btnLoadSelectedCase" style="height: 32px; font-size: 12.5px; padding: 0 12px;">读取并复原此盘</button>
+            </div>
+          </div>
+
+          <div class="cases-actions-row">
+            <button class="m3-btn m3-btn-filled" id="btnSaveCase" title="保存当前盘面至案例库">保存当前格局</button>
+            <button class="m3-btn m3-btn-tonal" id="btnOpenFindPattern" title="按干支/星门条件筛选格局">查找格局</button>
+            <button class="m3-btn m3-btn-tonal" id="btnEditCase" title="编辑选中的案例信息与笔记">编辑</button>
+            <button class="m3-btn m3-btn-outlined" id="btnDeleteCase" title="删除选中的历史案例">删除</button>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- M3 Bottom App Bar (桌面端底部操作栏) -->
+  <footer class="m3-bottom-app-bar">
+    <div class="bottom-actions-left">
+      <!-- 1. 核心起局组 -->
+      <div class="toolbar-group">
+        <button class="m3-btn m3-btn-filled" id="btnToolbarNow" title="一键重置为当前系统时间并起局">现在时刻</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomManual" title="手动录入其他盘面进行分析">手动录入</button>
+      </div>
+
+      <!-- 2. 研判速查组 -->
+      <div class="toolbar-group">
+        <button class="m3-btn m3-btn-tonal" id="btnSelectYongShen" title="选取奇门用神并在天盘以虚线红框标注">选取用神</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomKeying" title="速查九宫全盘综合克应研判">全盘克应</button>
+      </div>
+
+      <!-- 3. 复制输出组 -->
+      <div class="toolbar-group">
+        <button class="m3-btn m3-btn-tonal" id="btnBottomCopy" title="复制格式化排盘至剪贴板">复制排盘</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomCopyYongShen" title="复制所问事项与用神落宫分析">复制用神</button>
+      </div>
+
+      <!-- 4. 格局管理组 -->
+      <div class="toolbar-group">
+        <button class="m3-btn m3-btn-tonal" id="btnBottomFindPattern" title="搜索经典格局案例">查找格局</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomSave" title="将当前盘面保存至本地格局案例库">保存格局</button>
+      </div>
+    </div>
+    <div class="bottom-status-right">
+      <span id="txtLiveClock">当前时间: 2026年 10月 20日 21:12 星期二</span>
+    </div>
+  </footer>
+
+  <!-- M3 Navigation Bar (移动端底部导航) -->
+  <nav class="m3-navigation-bar" id="m3MobileNav">
+    <button class="nav-item active" data-tab="pan">
+      <div class="nav-indicator">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+      </div>
+      <span>奇门排盘</span>
+    </button>
+    <button class="nav-item" data-tab="cal">
+      <div class="nav-indicator">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"/></svg>
+      </div>
+      <span>万年历</span>
+    </button>
+    <button class="nav-item" data-tab="setting">
+      <div class="nav-indicator">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      </div>
+      <span>设局控制</span>
+    </button>
+    <button class="nav-item" data-tab="cases">
+      <div class="nav-indicator">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+      </div>
+      <span>案例格局</span>
+    </button>
+  </nav>
+
+  <!-- M3 系统设置 Dialog -->
+  <div class="m3-dialog-scrim" id="modalSettings">
+    <div class="m3-dialog settings-dialog" style="max-width: 620px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="var(--md-sys-color-primary)"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          <span style="font-size: 18px; font-weight: 700;">系统常用设置</span>
+        </div>
+        <button class="m3-icon-btn" data-close="modalSettings" title="关闭">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
+      <div class="m3-dialog-body" style="overflow-y: auto; padding: 4px 4px 12px; margin-bottom: 8px; flex: 1;">
+        <div class="settings-hint-banner" style="background: var(--md-sys-color-surface-container); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 12px; color: var(--md-sys-color-on-surface-variant); border-left: 3px solid var(--md-sys-color-primary);">
+          提示：所有常用设置修改后均自动保存至本地，刷新网页或离线重新打开均会自动保持，无需反复切换。
+        </div>
+
+        <!-- 1. 起局与排盘算法 -->
+        <div class="settings-section">
+          <div class="settings-section-title">起局与排盘算法</div>
+          <div class="settings-row">
+            <span class="settings-label">定局方法</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingDingju">
+              <button class="m3-segment-btn" data-value="zhirun">置闰法</button>
+              <button class="m3-segment-btn" data-value="chaibu">拆补法</button>
+              <button class="m3-segment-btn" data-value="maoshan">茅山法</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">排盘方式</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingPaipan">
+              <button class="m3-segment-btn" data-value="zhuan">转盘法 (排宫)</button>
+              <button class="m3-segment-btn" data-value="fei">飞盘法 (飞宫)</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">子时换日</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingZishi">
+              <button class="m3-segment-btn" data-value="split">早晚分 (早夜子时)</button>
+              <button class="m3-segment-btn" data-value="merge">进次日 (23点统换)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 默认地理位置与真太阳时 -->
+        <div class="settings-section" style="margin-top: 12px;">
+          <div class="settings-section-title">默认地理位置与真太阳时</div>
+          <div class="settings-row" style="flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 220px;">
+              <select id="selSettingProvince" class="m3-select" style="flex: 1;"></select>
+              <select id="selSettingCity" class="m3-select" style="flex: 1;"></select>
+            </div>
+            <label style="font-size: 13px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+              经度:
+              <input type="number" id="numSettingLongitude" class="m3-input" step="0.01" style="width: 78px;">°
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. 界面视觉与盘面展示 -->
+        <div class="settings-section" style="margin-top: 12px;">
+          <div class="settings-section-title">界面视觉与盘面展示</div>
+          <div class="settings-row">
+            <span class="settings-label">视觉主题</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingTheme">
+              <button class="m3-segment-btn" data-value="light">浅色主题</button>
+              <button class="m3-segment-btn" data-value="dark">深色主题</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">界面模式</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingSimple">
+              <button class="m3-segment-btn" data-value="0">完整模式</button>
+              <button class="m3-segment-btn" data-value="1">简洁模式</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">研判详情</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingDetail">
+              <button class="m3-segment-btn" data-value="1">默认展开详细</button>
+              <button class="m3-segment-btn" data-value="0">默认精简</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">象意筛选</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingImagery">
+              <button class="m3-segment-btn" data-value="all">全部象意</button>
+              <button class="m3-segment-btn" data-value="wu">仅物象</button>
+              <button class="m3-segment-btn" data-value="ren">仅人象</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">基盘视角</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingDipan">
+              <button class="m3-segment-btn" data-value="0">默认天盘</button>
+              <button class="m3-segment-btn" data-value="1">默认地盘全息</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. 断局与研判偏好 -->
+        <div class="settings-section" style="margin-top: 12px;">
+          <div class="settings-section-title">断局与研判偏好</div>
+          <div class="settings-row">
+            <span class="settings-label">运筹蒙版</span>
+            <label class="m3-switch-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+              <input type="checkbox" id="chkSettingMask" class="m3-checkbox">
+              <span>减弱非用神宫位遮罩（高亮吉门吉星吉神）</span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">旬空对冲</span>
+            <div class="m3-segmented-button-group settings-seg" id="segSettingKong">
+              <button class="m3-segment-btn" data-value="1">看对冲宫 (测人/物)</button>
+              <button class="m3-segment-btn" data-value="0">不看对冲宫 (事态)</button>
+            </div>
+        <!-- 5. 离线使用与跨设备支持 -->
+        <div class="settings-section" style="margin-top: 12px;">
+          <div class="settings-section-title">离线使用与跨设备支持</div>
+          <div style="font-size: 13px; line-height: 1.6; color: var(--md-sys-color-on-surface-variant); margin-bottom: 8px;">
+            提示：受现代移动浏览器安全规范（W3C标准）限制，手机/平板通过局域网 HTTP IP 访问时无法注册 Service Worker。若需要在手机断网、关机或退出后依然能永久脱机秒开，请直接使用【纯离线单文件版】：
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="./qimen_offline_standalone.html" download="奇门遁甲排盘_纯离线单文件版.html" class="m3-btn m3-btn-tonal" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+              <span>下载离线单文件 HTML</span>
+            </a>
+            <a href="./qimen_offline_standalone.html" target="_blank" class="m3-btn m3-btn-outlined" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <span>新标签页打开离线版</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="m3-dialog-actions" style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--md-sys-color-outline-variant);">
+        <button class="m3-btn m3-btn-outlined" id="btnSettingsResetDefault" style="color: var(--md-sys-color-error); border-color: var(--md-sys-color-error);">恢复默认</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="m3-btn m3-btn-tonal" id="btnSettingsOpenHelp">使用说明</button>
+          <button class="m3-btn m3-btn-filled" data-close="modalSettings">完成并保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 使用说明 Dialog -->
+  <div class="m3-dialog-scrim" id="modalHelp">
+    <div class="m3-dialog">
+      <div class="m3-dialog-headline">使用说明与定局准则</div>
+      <div class="m3-dialog-body">
+        <h4 style="color: var(--md-sys-color-primary); margin-bottom: 6px;">一、三种经典定局法</h4>
+        <p><strong>1. 置闰法：</strong>严格遵循符头（甲/己）与节气交节规律。符头在交节日前1至9天内到达时为“超神”，提前起用下一节气三元；符头超神超过9天时在芒种或大雪进行“置闰”，符头与节气同日为“正授”，符头迟于节气为“接气”。</p>
+        <p style="margin-top: 6px;"><strong>2. 拆补法：</strong>不跳过节气，交节日即进入该节气三元。各日以符头定上中下元，局数恒随当日公历所属节气。</p>
+        <p style="margin-top: 6px;"><strong>3. 茅山法：</strong>以交节时刻为严格分界，交节日起前5日为上元，次5日为中元，其余至下一交节为下元。</p>
+
+        <h4 style="color: var(--md-sys-color-primary); margin-top: 14px; margin-bottom: 6px;">二、PWA 三端离线安装指南</h4>
+        <p>本系统采用纯前端本地架构，内置高精度天文历法交节数据与全国地级市经度坐标，支持完全脱网离线运行：</p>
+        <ul style="padding-left: 20px; margin-top: 6px;">
+          <li><strong>iOS (iPhone/iPad)：</strong>Safari 打开本站 → 点击底部“分享” → 选择“<strong>添加到主屏幕</strong>”。</li>
+          <li><strong>Android (安卓)：</strong>Chrome 浏览器打开 → 点击右上角菜单 → 选择“<strong>安装应用</strong>”。</li>
+          <li><strong>Windows / Mac：</strong>桌面 Chrome / Edge 地址栏右侧点击“<strong>安装应用</strong>”图标。</li>
+        </ul>
+      </div>
+      <div class="m3-dialog-actions">
+        <button class="m3-btn m3-btn-filled" data-close="modalHelp">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 全盘克应 Dialog -->
+  <div class="m3-dialog-scrim" id="modalKeying">
+    <div class="m3-dialog" style="max-width: 680px;">
+      <div class="m3-dialog-headline" id="modalKeyingTitle">奇门遁甲全盘克应速查</div>
+      <div class="m3-dialog-body" id="modalKeyingBody">
+        <!-- 动态生成全盘九宫克应 -->
+      </div>
+      <div class="m3-dialog-actions modal-keying-actions">
+        <button class="m3-btn m3-btn-outlined" id="btnKeyingFilterYongShen" type="button">只看当前用神</button>
+        <div class="modal-keying-right-actions">
+          <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyPan" type="button" title="仅复制格式化排盘至剪贴板">复制排盘</button>
+          <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyAll" type="button" title="一起复制排盘与当前信息至剪贴板">复制排盘与当前信息</button>
+          <button class="m3-btn m3-btn-tonal" id="btnKeyingCopyCurrent" type="button">复制当前信息</button>
+          <button class="m3-btn m3-btn-filled" data-close="modalKeying" type="button">完成</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 保存案例 Dialog -->
+  <div class="m3-dialog-scrim" id="modalSaveCase">
+    <div class="m3-dialog" style="max-width: 440px;">
+      <div class="m3-dialog-headline">保存格局案例</div>
+      <div class="m3-dialog-body">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <label style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+            案例标题 / 占事简注:
+            <input type="text" id="iptCaseTitle" class="m3-input" placeholder="例如: 测出行合作/求财">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+            断语笔记:
+            <textarea id="txtCaseRemark" class="m3-input" style="height: 80px; padding: 8px;" placeholder="记录求测人提问及断卦思路..."></textarea>
+          </label>
+        </div>
+      </div>
+      <div class="m3-dialog-actions">
+        <button class="m3-btn m3-btn-tonal" data-close="modalSaveCase">取消</button>
+        <button class="m3-btn m3-btn-filled" id="btnConfirmSaveCase">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 编辑案例 Dialog -->
+  <div class="m3-dialog-scrim" id="modalEditCase">
+    <div class="m3-dialog" style="max-width: 460px;">
+      <div class="m3-dialog-headline">编辑格局案例</div>
+      <div class="m3-dialog-body">
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 4px;">
+          <div id="editCaseMetaSummary" style="font-size: 12px; color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); padding: 8px 12px; border-radius: 8px; border: 1px dashed var(--md-sys-color-outline-variant); font-weight: 600;"></div>
+          
+          <label style="display: flex; flex-direction: column; gap: 4px; font-weight: 500; font-size: 13px;">
+            案例标题 / 占事简注:
+            <input type="text" id="iptEditCaseTitle" class="m3-input" placeholder="例如: 测出行合作/求财">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-weight: 500; font-size: 13px;">
+            所问事项 / 问题:
+            <input type="text" id="iptEditCaseQuestion" class="m3-input" placeholder="记录求测人具体提问事项...">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-weight: 500; font-size: 13px;">
+            断语笔记:
+            <textarea id="txtEditCaseRemark" class="m3-input" style="height: 90px; padding: 8px; font-size: 13px;" placeholder="记录断卦思路、应期研判及后续反馈..."></textarea>
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--md-sys-color-outline); cursor: pointer; margin-top: 2px;">
+            <input type="checkbox" id="chkEditUpdatePan">
+            <span>同时用当前排盘覆盖此案例的盘面数据</span>
+          </label>
+        </div>
+      </div>
+      <div class="m3-dialog-actions">
+        <button class="m3-btn m3-btn-tonal" data-close="modalEditCase">取消</button>
+        <button class="m3-btn m3-btn-filled" id="btnConfirmEditCase">保存修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 查找格局 Dialog (复刻原版高级格局检索系统) -->
+  <div class="m3-dialog-scrim" id="modalFindPattern">
+    <div class="m3-dialog search-pattern-dialog">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>超级奇门排盘 · 查找格局</span>
+        <button class="m3-icon-btn" data-close="modalFindPattern" title="关闭" style="width: 32px; height: 32px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="m3-dialog-body" style="max-height: 75vh; overflow-y: auto;">
+        <!-- 第一行: 时间范围与定局方式 -->
+        <div class="search-section-box">
+          <div class="search-row-flex">
+            <div class="search-time-group">
+              <span class="search-field-title">开始时间：</span>
+              <input type="datetime-local" id="iptSearchStart" class="m3-input search-dt-input">
+            </div>
+            <div class="search-time-group">
+              <span class="search-field-title">结束时间：</span>
+              <input type="datetime-local" id="iptSearchEnd" class="m3-input search-dt-input">
+            </div>
+          </div>
+          <div class="search-row-flex" style="margin-top: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div class="search-quick-ranges">
+              <span style="font-size: 12px; color: var(--md-sys-color-outline);">快捷范围:</span>
+              <button class="m3-chip-btn" data-range="today">今天</button>
+              <button class="m3-chip-btn active" data-range="3days">未来3天</button>
+              <button class="m3-chip-btn" data-range="7days">未来7天</button>
+              <button class="m3-chip-btn" data-range="month">本月</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="search-field-title">定局方式:</span>
+              <div class="m3-segmented-button-group" id="segSearchDingju">
+                <button class="m3-segment-btn" data-value="chaibu">拆补法</button>
+                <button class="m3-segment-btn active" data-value="zhirun">置闰法</button>
+                <button class="m3-segment-btn" data-value="maoshan">茅山法</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 第二行: 条件构建器 (九宫选择 / 神星门仪 / 格局选择) -->
+        <div class="search-section-box" style="margin-top: 12px;">
+          <div class="search-criteria-toolbar">
+            <div class="search-ctrl-unit">
+              <span class="search-field-title">九宫选择：</span>
+              <select id="selSearchGong" class="m3-select" style="min-width: 120px;">
+                <option value="1">坎一宫正北</option>
+                <option value="2">坤二宫西南</option>
+                <option value="3">震三宫正东</option>
+                <option value="4">巽四宫东南</option>
+                <option value="5">中五宫正中</option>
+                <option value="6">乾六宫西北</option>
+                <option value="7">兑七宫正西</option>
+                <option value="8">艮八宫东北</option>
+                <option value="9">离九宫正南</option>
+              </select>
+            </div>
+            <div class="search-ctrl-unit">
+              <span class="search-field-title">神星门仪：</span>
+              <select id="selSearchCategory" class="m3-select" style="min-width: 100px;">
+                <option value="tianSpirit">天八神</option>
+                <option value="star">九星</option>
+                <option value="tianGan">天盘干</option>
+                <option value="door">八门</option>
+                <option value="diGan">地盘干</option>
+                <option value="diSpirit">地八神</option>
+              </select>
+            </div>
+            <div class="search-ctrl-unit">
+              <span class="search-field-title">格局选择：</span>
+              <select id="selSearchPreset" class="m3-select" style="min-width: 125px;">
+                <option value="">-- 选择经典格局 --</option>
+                <option value="青龙返首">青龙返首</option>
+                <option value="飞鸟跌穴">飞鸟跌穴</option>
+                <option value="天遁">天遁</option>
+                <option value="地遁">地遁</option>
+                <option value="人遁">人遁</option>
+                <option value="风遁">风遁</option>
+                <option value="云遁">云遁</option>
+                <option value="龙遁">龙遁</option>
+                <option value="虎遁">虎遁</option>
+                <option value="神遁">神遁</option>
+                <option value="鬼遁">鬼遁</option>
+                <option value="真诈">真诈</option>
+                <option value="休诈">休诈</option>
+                <option value="重诈">重诈</option>
+                <option value="天假">天假</option>
+                <option value="地假">地假</option>
+                <option value="人假">人假</option>
+                <option value="神假">神假</option>
+                <option value="鬼假">鬼假</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 对应要素选择列表 (Chips) -->
+          <div class="search-candidate-box">
+            <span style="font-size: 12px; font-weight: 600; color: var(--md-sys-color-outline); white-space: nowrap;">选择：</span>
+            <div class="search-candidate-chips" id="boxSearchCandidates">
+              <!-- 动态根据神星门仪渲染 -->
+            </div>
+            <button class="m3-btn m3-btn-tonal" id="btnClearCurrentField" style="height: 30px; padding: 0 8px; font-size: 12px; white-space: nowrap;">清除当前项</button>
+          </div>
+
+          <!-- 提示文本: 多行条件格式化预览 (100% 经典原版格式) -->
+          <div style="margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+              <span class="search-field-title">提示文本（查询条件结构）：</span>
+              <button class="m3-btn m3-btn-tonal" id="btnSearchReset" style="height: 28px; padding: 0 8px; font-size: 12px;">恢复默认</button>
+            </div>
+            <textarea id="txtSearchPrompt" class="search-code-preview" readonly style="width: 100%; box-sizing: border-box;"></textarea>
+          </div>
+        </div>
+
+        <!-- 第三行: 查找执行与结果 -->
+        <div class="search-action-banner" style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="m3-btn m3-btn-filled" id="btnSearchExecute" style="height: 38px; padding: 0 20px;">开始查找</button>
+            <span id="txtSearchStatus" style="font-size: 13px; font-weight: 600; color: var(--md-sys-color-primary);">选择好条件后点开始查找</span>
+          </div>
+        </div>
+
+        <!-- 结果列表 -->
+        <div class="search-results-box" id="boxSearchResults" style="margin-top: 12px; display: none;">
+          <div class="search-results-title" style="font-size: 13px; font-weight: 600; color: var(--md-sys-color-on-surface); margin-bottom: 6px;">双击或点击选择的时间即可起局：</div>
+          <div class="search-results-list" id="listSearchResults">
+            <!-- 检索匹配结果 -->
+          </div>
+        </div>
+      </div>
+      <div class="m3-dialog-actions">
+        <button class="m3-btn m3-btn-tonal" data-close="modalFindPattern">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 选取用神与问事 Dialog -->
+  <div class="m3-dialog-scrim" id="modalYongShen">
+    <div class="m3-dialog modal-yongshen-dialog" style="max-width: 680px; width: 92vw; max-height: 88vh; display: flex; flex-direction: column;">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color: var(--md-sys-color-primary);"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+          <span>选取用神与所问事项</span>
+        </div>
+        <button class="m3-icon-btn" data-close="modalYongShen" title="关闭">✕</button>
+      </div>
+
+      <div class="m3-dialog-body" style="overflow-y: auto; flex: 1; padding-top: 4px; padding-bottom: 12px;">
+        <!-- 1. 所问问题输入 -->
+        <div class="yongshen-section">
+          <label class="yongshen-section-label" for="iptUserQuestion">
+            <strong>所问问题 / 求测事项</strong>
+            <span class="yongshen-label-hint">（切换至地盘时居中显示）</span>
+          </label>
+          <div style="display: flex; gap: 8px; margin-top: 6px;">
+            <input type="text" id="iptUserQuestion" class="m3-input" style="flex: 1;" placeholder="例如：测工作晋升调动、求财投资利润、恋爱感情走势、身体疾病病灶...">
+            <button class="m3-btn m3-btn-subtle" id="btnClearUserQuestion" type="button" style="padding: 0 10px;">清空</button>
+          </div>
+          <!-- 常见问事快捷标签 -->
+          <div class="yongshen-quick-questions" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
+            <span style="font-size: 12px; color: var(--md-sys-color-outline); display: flex; align-items: center;">快捷预设:</span>
+            <button type="button" class="yongshen-qchip" data-q="求测自身运势" data-ys="日干">求测自身</button>
+            <button type="button" class="yongshen-qchip" data-q="测工作事业与公司" data-ys="开门,日干">工作事业</button>
+            <button type="button" class="yongshen-qchip" data-q="测本金资金与财运" data-ys="戊,生门">求财资金</button>
+            <button type="button" class="yongshen-qchip" data-q="测生意投资利润" data-ys="生门,戊">投资利润</button>
+            <button type="button" class="yongshen-qchip" data-q="测商务合作合伙" data-ys="六合,日干">合作谈判</button>
+            <button type="button" class="yongshen-qchip" data-q="测恋爱感情婚配" data-ys="乙,庚,六合">恋爱婚配</button>
+            <button type="button" class="yongshen-qchip" data-q="测已婚夫妻婚姻" data-ys="日干,合干">已婚夫妻</button>
+            <button type="button" class="yongshen-qchip" data-q="测身体疾病与健康" data-ys="天芮,日干">疾病健康</button>
+            <button type="button" class="yongshen-qchip" data-q="测领导提拔与贵人" data-ys="值符,年干">领导贵人</button>
+            <button type="button" class="yongshen-qchip" data-q="测子女胎产与下属事物" data-ys="时干">子女下属/失物</button>
+            <button type="button" class="yongshen-qchip" data-q="测失窃小偷盗贼" data-ys="玄武,天蓬">防贼防盗</button>
+            <button type="button" class="yongshen-qchip" data-q="测变动调动出行" data-ys="马星,九天">变动出行</button>
+          </div>
+        </div>
+
+        <!-- 2. 已选用神展示区 -->
+        <div class="yongshen-section" style="margin-top: 14px; background: var(--md-sys-color-surface-container-low); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--md-sys-color-primary);">当前已选用神（值符以黄色虚框圈选，其他用神以红色虚框圈选）:</span>
+            <button type="button" class="m3-btn-subtle" id="btnClearAllYongShen" style="font-size: 12px; padding: 2px 8px; color: var(--md-sys-color-error);">清空已选</button>
+          </div>
+          <div id="yongshenSelectedContainer" class="yongshen-selected-tags">
+            <!-- 动态生成已选用神 chips -->
+            <span class="yongshen-empty-hint" style="font-size: 12.5px; color: var(--md-sys-color-outline);">尚未选取用神（可点击下方推荐或各分类要素）</span>
+          </div>
+
+          <!-- 旬空看对冲宫判定准则与设置 -->
+          <div class="yongshen-kong-rule-bar" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--md-sys-color-outline-variant); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12.5px; font-weight: 700; color: var(--md-sys-color-primary);">旬空对宫规则：</span>
+              <span style="font-size: 11.5px; color: var(--md-sys-color-outline);">人/物逢空看对宫，事逢空不看对面</span>
+            </div>
+            <div class="yongshen-kong-radio-group" style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
+              <label class="ys-nature-radio" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="radio" name="radKongOpposite" value="auto" checked>
+                <span>智能判断</span>
+              </label>
+              <label class="ys-nature-radio" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="radio" name="radKongOpposite" value="person_object">
+                <span>测人/测物（看对宫）</span>
+              </label>
+              <label class="ys-nature-radio" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="radio" name="radKongOpposite" value="affair">
+                <span>测事态（不看对宫）</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 用神固定标准与常用场景一览 -->
+        <div class="yongshen-section" style="margin-top: 14px;">
+          <div class="yongshen-tab-header">
+            <span style="font-size: 13px; font-weight: 600;">奇门固定用神标准分类速选：</span>
+          </div>
+
+          <!-- 分组 1: 核心人物与四柱 (日/时/年/月/合干) -->
+          <div class="ys-group-box">
+            <div class="ys-group-title">四柱核心用神（日、时最常用）</div>
+            <div class="ys-chips-row">
+              <label class="ys-chip"><input type="checkbox" value="日干"> <span><b>日干</b>（问事人/求测人）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="时干"> <span><b>时干</b>（子女/下属/失物/事态）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="年干"> <span><b>年干</b>（领导/长辈/父母）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="月干"> <span><b>月干</b>（平辈/同学同事/兄弟姐妹）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="合干"> <span><b>合干</b>（配偶/已婚相合干）</span></label>
+            </div>
+          </div>
+
+          <!-- 分组 2: 财官事门 (戊/开/生/死/休/景/杜/惊/伤) -->
+          <div class="ys-group-box">
+            <div class="ys-group-title">财官利门 · 八门用神</div>
+            <div class="ys-chips-row">
+              <label class="ys-chip"><input type="checkbox" value="戊"> <span><b>戊</b>（钱财/资金/投资/大块头）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="生门"> <span><b>生门</b>（利润/收益/求财发展）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="开门"> <span><b>开门</b>（工作/事业/公司工厂/店铺）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="休门"> <span><b>休门</b>（休养/退休/求闲/贵人）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="景门"> <span><b>景门</b>（文书/消息/行情/合同）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="死门"> <span><b>死门</b>（地皮/不动产/坟墓/难办）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="惊门"> <span><b>惊门</b>（官司口舌/惊恐/律师）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="伤门"> <span><b>伤门</b>（讨债/捕盗/车祸/伤灾）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="杜门"> <span><b>杜门</b>（保密/阻塞/技术/公安）</span></label>
+            </div>
+          </div>
+
+          <!-- 分组 3: 八神用神 (值符/六合/玄武/天蓬/九天/九地/白虎/螣蛇/太阴) -->
+          <div class="ys-group-box">
+            <div class="ys-group-title">神机大纲 · 八神用神</div>
+            <div class="ys-chips-row">
+              <label class="ys-chip"><input type="checkbox" value="值符"> <span><b>值符</b>（事态大纲/领导/贵人）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="六合"> <span><b>六合</b>（合作/中介/恋爱/聚会）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="玄武"> <span><b>玄武</b>（小偷/暗昧/遗失/虚假）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="白虎"> <span><b>白虎</b>（压力/凶险/伤灾/武职）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="九天"> <span><b>九天</b>（高处/远方/航空/扬名）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="九地"> <span><b>九地</b>（低处/沉稳/深藏/埋伏）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="螣蛇"> <span><b>螣蛇</b>（变卦/虚惊/怪异/猥琐）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="太阴"> <span><b>太阴</b>（隐秘/策划/阴佑/女性）</span></label>
+            </div>
+          </div>
+
+          <!-- 分组 4: 九星用神 (天芮/天蓬/天柱/天辅/天心/天任/天冲/天英/天禽) -->
+          <div class="ys-group-box">
+            <div class="ys-group-title">星象时机 · 九星用神</div>
+            <div class="ys-chips-row">
+              <label class="ys-chip"><input type="checkbox" value="天芮"> <span><b>天芮</b>（疾病/病灶/病人/学生）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天蓬"> <span><b>天蓬</b>（大盗大偷/破大财/犯罪）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天柱"> <span><b>天柱</b>（官非口舌/破坏/演说）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天辅"> <span><b>天辅</b>（学业/文化/知识/教师）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天心"> <span><b>天心</b>（医生/医药/心计/领导）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天任"> <span><b>天任</b>（勤劳/实在/农业/助人）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天冲"> <span><b>天冲</b>（冲锋/迅速/鲁莽/体育）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天英"> <span><b>天英</b>（热情/名气/大火/电子）</span></label>
+            </div>
+          </div>
+
+          <!-- 分组 5: 十天干与特殊 (乙/庚/丙/丁/辛/癸/马星/空亡/乾坤) -->
+          <div class="ys-group-box">
+            <div class="ys-group-title">十干像意与特殊用神</div>
+            <div class="ys-chips-row">
+              <label class="ys-chip"><input type="checkbox" value="乙"> <span><b>乙</b>（恋爱女方/长条/中药）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="庚"> <span><b>庚</b>（恋爱男方/对手/仇人/阻碍）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="丙"> <span><b>丙</b>（月奇/权威/红衣服/乱子）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="丁"> <span><b>丁</b>（星奇/希望/奇迹/小三）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="己"> <span><b>己</b>（陷阱/私欲/拐弯抹角）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="辛"> <span><b>辛</b>（错误/改过/金属/颗粒）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="壬"> <span><b>壬</b>（流水/动荡/大水/迷茫）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="癸"> <span><b>癸</b>（暗昧/消极/污渍/黑衣服）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="马星"> <span><b>马星</b>（变动/出行/跑动）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="空亡"> <span><b>空亡</b>（虚无/落空/待填实）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="乾宫"> <span><b>乾宫</b>（西北/长辈/圆形/首都）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="坤宫"> <span><b>坤宫</b>（西南/母亲/风水/腹部）</span></label>
+            </div>
+          </div>
+
+          <!-- 叶鸿生常用知识点锦囊提示 -->
+          <details class="yongshen-tips-details" style="margin-top: 12px; font-size: 12px; color: var(--md-sys-color-outline); background: var(--md-sys-color-surface-container); padding: 8px 12px; border-radius: 6px;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--md-sys-color-primary);">查看《叶鸿生：固定用神与临时找用神秘要》</summary>
+            <div style="margin-top: 8px; line-height: 1.6;">
+              <p>• <b>基本纲领</b>：以“月支”为整个奇门盘的参考核心，以“值符”宫为预测事项的大纲。</p>
+              <p>• <b>六亲人事</b>：求测人为日干；大事取出生年干；长辈取年干、领导看值符；平辈取月干；下属孩子取时干。</p>
+              <p>• <b>情感婚恋</b>：恋爱看乙、庚、六合；已婚看日干和相合之干。</p>
+              <p>• <b>事业求财</b>：公司工厂店铺看开门；钱财资金看戊，利润看生门。</p>
+              <p>• <b>疾病防盗</b>：疾病看天芮宫、日干宫；小偷看玄武，大盗看天蓬。</p>
+              <p>• <b>用神无定法</b>：找最符合现实的用神，胖子看戊、红衣看丙、猥琐看螣蛇、极高看九天、病态看天芮、长黑看癸……不知就取一个你感觉上的用神，取最符合的，不要取不知道的。</p>
+            </div>
+          </details>
+
+        </div>
+      </div>
+
+      <div class="m3-dialog-actions" style="padding: 10px 16px; border-top: 1px solid var(--md-sys-color-outline-variant); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="m3-btn m3-btn-subtle" type="button" id="btnResetYongShen">重置清空</button>
+          <button class="m3-btn m3-btn-tonal" type="button" id="btnStartManualGridPick" title="关闭弹窗，直接在九宫格盘面上点击八神、九星、八门、天干、地干进行圈选">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            手动选取用神
+          </button>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="m3-btn m3-btn-outlined" type="button" data-close="modalYongShen">取消</button>
+          <button class="m3-btn m3-btn-filled" type="button" id="btnConfirmYongShen">确定并框选用神</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 手动录入奇门盘面 Dialog -->
+  <div class="m3-dialog-scrim" id="modalManualInput">
+    <div class="m3-dialog modal-manual-dialog" style="max-width: 660px; width: 92vw; max-height: 88vh; display: flex; flex-direction: column;">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color: var(--md-sys-color-primary);"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          <span>手动录入奇门盘面</span>
+        </div>
+        <button class="m3-icon-btn" data-close="modalManualInput" title="关闭">✕</button>
+      </div>
+
+      <div class="m3-dialog-body" style="overflow-y: auto; flex: 1; padding-top: 4px; padding-bottom: 12px;">
+        <!-- 录入模式切换 Tab -->
+        <div class="m3-segmented-button-group" id="segManualMode" style="margin-bottom: 12px; width: 100%;">
+          <button class="m3-segment-btn active" data-mode="ganzhi" style="flex: 1;">极速干支定局（推荐）</button>
+          <button class="m3-segment-btn" data-mode="text" style="flex: 1;">文本粘贴智能识别</button>
+        </div>
+
+        <!-- 模式 1: 极速干支定局 -->
+        <div id="manualModeGanzhi" class="manual-mode-panel">
+          <!-- 1. 局象选择 -->
+          <div class="manual-field-group" style="margin-bottom: 12px;">
+            <label class="manual-field-label" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px;">
+              1. 选择局象（阴阳遁 + 局数）
+            </label>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 12.5px; color: var(--md-sys-color-outline);">遁别:</span>
+                <select id="selManualDun" class="m3-select" style="height: 36px; padding: 0 10px;">
+                  <option value="阴" selected>阴遁</option>
+                  <option value="阳">阳遁</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 12.5px; color: var(--md-sys-color-outline);">局数:</span>
+                <select id="selManualJuNum" class="m3-select" style="height: 36px; padding: 0 10px;">
+                  <option value="1">一局</option>
+                  <option value="2">二局</option>
+                  <option value="3">三局</option>
+                  <option value="4">四局</option>
+                  <option value="5" selected>五局</option>
+                  <option value="6">六局</option>
+                  <option value="7">七局</option>
+                  <option value="8">八局</option>
+                  <option value="9">九局</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 12.5px; color: var(--md-sys-color-outline);">排法:</span>
+                <select id="selManualPaipanMethod" class="m3-select" style="height: 36px; padding: 0 10px;">
+                  <option value="zhuan" selected>排宫法 (转盘)</option>
+                  <option value="fei">飞宫法 (飞盘)</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 12.5px; color: var(--md-sys-color-outline);">定局:</span>
+                <select id="selManualDingjuMethod" class="m3-select" style="height: 36px; padding: 0 10px;">
+                  <option value="chaibu">拆补法</option>
+                  <option value="zhirun" selected>置闰法</option>
+                  <option value="maoshan">茅山法</option>
+                </select>
+              </div>
+            </div>
+            <!-- 反推定局提示 -->
+            <div style="font-size: 11.5px; color: var(--md-sys-color-outline); margin-top: 4px;">
+              <i>小窍门：若不知局数，看盘上地盘“戊”落几宫即几局（如戊在坎一宫即阳一局，戊在坤二即阴二局，戊在震三即阳三局...）</i>
+            </div>
+          </div>
+
+          <!-- 2. 四柱干支选择 -->
+          <div class="manual-field-group" style="margin-bottom: 12px;">
+            <label class="manual-field-label" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px;">
+              2. 设定四柱干支（日柱与时柱为核心要素）
+            </label>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+              <!-- 年柱 -->
+              <div class="manual-gz-card" style="background: var(--md-sys-color-surface-container-low); padding: 8px; border-radius: 6px; border: 1px solid var(--md-sys-color-outline-variant);">
+                <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--md-sys-color-on-surface);">年柱</div>
+                <select id="selManualGzYear" class="m3-select" style="width: 100%; height: 32px; padding: 0 6px; font-size: 13px;"></select>
+              </div>
+              <!-- 月柱 -->
+              <div class="manual-gz-card" style="background: var(--md-sys-color-surface-container-low); padding: 8px; border-radius: 6px; border: 1px solid var(--md-sys-color-outline-variant);">
+                <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--md-sys-color-on-surface);">月柱</div>
+                <select id="selManualGzMonth" class="m3-select" style="width: 100%; height: 32px; padding: 0 6px; font-size: 13px;"></select>
+              </div>
+              <!-- 日柱 (求测人) -->
+              <div class="manual-gz-card" style="background: var(--md-sys-color-surface-container-low); padding: 8px; border-radius: 6px; border: 1.5px solid var(--md-sys-color-primary);">
+                <div style="font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--md-sys-color-primary);">日柱 (求测人)</div>
+                <select id="selManualGzDay" class="m3-select" style="width: 100%; height: 32px; padding: 0 6px; font-size: 13px; font-weight: 600;"></select>
+              </div>
+              <!-- 时柱 (事态核心) -->
+              <div class="manual-gz-card" style="background: var(--md-sys-color-surface-container-low); padding: 8px; border-radius: 6px; border: 1.5px solid var(--md-sys-color-primary);">
+                <div style="font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--md-sys-color-primary);">时柱 (值使值符)</div>
+                <select id="selManualGzHour" class="m3-select" style="width: 100%; height: 32px; padding: 0 6px; font-size: 13px; font-weight: 600;"></select>
+              </div>
+            </div>
+
+            <!-- 在下方支持手动输入四柱干支或公历时间进行识别 -->
+            <div style="margin-top: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--md-sys-color-primary);">手动输入四柱干支或公历时间（输入即自动识别联动）：</span>
+                <span id="txtManualGzQuickStatus" style="font-size: 11.5px; color: var(--md-sys-color-outline);"></span>
+              </div>
+              <input type="text" id="iptManualGzQuick" class="m3-input" style="width: 100%; height: 36px; font-size: 13px; box-sizing: border-box;" placeholder="输入四柱（如：壬寅 乙巳 壬申 庚戌）或公历时间（如：2026-10-20 21:12、2022年5月18日20点）">
+            </div>
+          </div>
+        </div>
+
+        <!-- 模式 2: 文本粘贴智能识别 -->
+        <div id="manualModeText" class="manual-mode-panel" style="display: none;">
+          <div class="manual-field-group">
+            <label class="manual-field-label" for="txtManualPasteInput" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px;">
+              直接粘贴盘面文字（支持微信、论坛、排盘软件排盘文本）
+            </label>
+            <textarea id="txtManualPasteInput" class="m3-input" style="width: 100%; height: 110px; padding: 8px; font-family: monospace; font-size: 12.5px; resize: vertical;" placeholder="例如直接粘贴：&#10;丙午年 戊戌月 丁卯日 辛亥时 阴五局&#10;或：&#10;公历：2026年10月20日21时12分&#10;干支：丙午 戊戌 丁卯 辛亥 阴遁五局"></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <button class="m3-btn m3-btn-tonal" id="btnParseManualText" type="button" style="height: 32px; padding: 0 14px; font-size: 12.5px;">智能解析文本</button>
+              <span id="txtManualParseStatus" style="font-size: 12px; color: var(--md-sys-color-outline);"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 实时推算预览卡片 -->
+        <div class="manual-preview-card" style="margin-top: 14px; background: var(--md-sys-color-surface-container-high); border-radius: 8px; padding: 10px 14px; border: 1px dashed var(--md-sys-color-outline);">
+          <div style="font-size: 12px; font-weight: 700; color: var(--md-sys-color-primary); margin-bottom: 4px;">录入盘面确认摘要：</div>
+          <div id="manualPreviewSummary" style="font-size: 13px; font-weight: 600; line-height: 1.5; color: var(--md-sys-color-on-surface);">
+            阴遁五局 · 丙午年 戊戌月 丁卯日 辛亥时
+          </div>
+          <div id="manualPreviewDetail" style="font-size: 12px; color: var(--md-sys-color-outline); margin-top: 2px;">
+            旬首：甲辰壬 ｜ 值符星：天蓬 ｜ 值使门：杜门 ｜ 日空：戌亥 ｜ 时空：寅卯
+          </div>
+        </div>
+      </div>
+
+      <div class="m3-dialog-actions" style="padding: 10px 16px; border-top: 1px solid var(--md-sys-color-outline-variant); display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="m3-btn m3-btn-outlined" type="button" data-close="modalManualInput">取消</button>
+        <button class="m3-btn m3-btn-filled" type="button" id="btnConfirmManualInput">确认录入并排盘</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 Snackbar (Toast 提示气泡) -->
+  <div class="m3-snackbar" id="toastMsg">提示消息</div>
+
+  <!-- M3 盘面圈选用神浮动操作条 -->
+  <div class="grid-pick-bar" id="gridPickBar" style="display: none;">
+    <div class="grid-pick-bar-main">
+      <div class="grid-pick-bar-header">
+        <div class="grid-pick-title-box">
+          <span class="grid-pick-badge">盘面圈选模式</span>
+          <span class="grid-pick-tip">点击盘面上任意八神、九星、八门、天干、地干、空马即可圈选/取消</span>
+        </div>
+        <button type="button" class="grid-pick-close-btn" id="btnCloseGridPick" title="退出圈选模式">✕</button>
+      </div>
+      <div class="grid-pick-tags-row" id="gridPickTagsRow">
+        <!-- 动态显示当前已圈选用神标签 -->
+      </div>
+      <div class="grid-pick-actions-row">
+        <div class="grid-pick-left-actions">
+          <button type="button" class="m3-btn m3-btn-subtle" id="btnResetGridPick">清空已选</button>
+          <button type="button" class="m3-btn m3-btn-outlined" id="btnBackToModalYS">返回列表弹窗</button>
+        </div>
+        <button type="button" class="m3-btn m3-btn-filled" id="btnFinishGridPick">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+          完成圈选
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 宫位要素快捷圈选 Dialog / Popover -->
+  <div class="m3-dialog-scrim" id="modalPalacePickElements" style="z-index: 1100;">
+    <div class="m3-dialog modal-palace-picker-dialog" style="max-width: 480px; width: 92vw; padding: 16px 20px;">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 8px; margin-bottom: 2px;">
+        <div>
+          <span id="palacePickerTitle" style="font-size: 16px; font-weight: 700; color: var(--md-sys-color-primary);">宫位要素圈选</span>
+          <div style="font-size: 11.5px; color: var(--md-sys-color-outline); margin-top: 2px;">点击下方要素直接圈选（常规用神红色，值符黄色）</div>
+        </div>
+        <button class="m3-icon-btn" id="btnClosePalacePicker" title="关闭" style="width: 28px; height: 28px;">✕</button>
+      </div>
+      <div class="m3-dialog-body" id="palacePickerBody" style="padding-top: 6px; padding-bottom: 4px; overflow-y: visible;">
+        <!-- 动态生成本宫要素双栏精致卡片 -->
+      </div>
+      <div class="m3-dialog-actions" style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--md-sys-color-outline-variant); display: flex; justify-content: space-between; align-items: center;">
+        <span id="palacePickerSummary" style="font-size: 12px; color: var(--md-sys-color-outline);">尚未选用神</span>
+        <button class="m3-btn m3-btn-filled" type="button" id="btnConfirmPalacePicker" style="min-width: 76px;">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+
+</body>
+</html>
