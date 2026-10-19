@@ -668,6 +668,24 @@ body {
     grid-template-columns: 1fr !important;
     gap: 6px !important;
   }
+  .simple-mode .board-card {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    padding-bottom: 22px !important;
+  }
+  .simple-mode .board-card-header {
+    height: auto !important;
+    min-height: 32px !important;
+    max-height: none !important;
+  }
+  .simple-mode .nine-grid {
+    width: 100% !important;
+    max-width: 410px !important;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: 1 / 1 !important;
+  }
   .simple-mode .keying-card {
     height: auto;
   }
@@ -3659,11 +3677,26 @@ body {
 
 /* 平板设备专属九宫盘面放大与清晰排版 (Tablet: iPad, Android Pad 等 601px ~ 960px 视口) */
 @media (min-width: 601px) and (max-width: 960px) {
-  .nine-grid {
+  .board-card,
+  .simple-mode .board-card {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    padding: 16px 16px 26px !important;
+    box-sizing: border-box !important;
+  }
+
+  .nine-grid,
+  .simple-mode .nine-grid {
+    width: 100% !important;
     max-width: 490px !important;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: 1 / 1 !important;
     gap: 8px;
-    padding: 8px;
+    padding: 8px 8px 10px;
     border-radius: var(--md-shape-corner-extra-large);
+    margin: 0 auto !important;
   }
 
   .palace-cell {
@@ -3784,10 +3817,18 @@ body {
     display: none;
   }
 
-  .nine-grid {
-    gap: 5px;
-    padding: 5px;
-    max-width: 330px;
+  .nine-grid,
+  .simple-mode .nine-grid {
+    width: 100% !important;
+    max-width: 350px !important;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: 1 / 1 !important;
+    gap: 5px !important;
+    padding: 7px 7px 9px !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
   }
 
   .palace-cell {
@@ -4260,11 +4301,30 @@ body {
 }
 
 @media (max-width: 600px) {
-  .board-card-header {
+  .board-card,
+  .simple-mode .board-card {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    padding: 12px 12px 24px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .board-card-header,
+  .simple-mode .board-card-header {
+    height: auto !important;
+    min-height: 32px !important;
+    max-height: none !important;
+    margin-bottom: 2px !important;
     flex-wrap: wrap;
     gap: 6px;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0 !important;
   }
   .board-card-center {
     order: 3;
