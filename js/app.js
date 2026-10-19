@@ -2328,7 +2328,7 @@ function copyKeyingModalPanAndCurrentContent() {
   const currentKeyingText = getKeyingModalCurrentContentText();
   const combined = `${panText.trim()}\n\n${currentKeyingText.trim()}\n`;
 
-  const successToast = '排盘与当前信息已成功复制到剪贴板！';
+  const successToast = '排盘与当前信息(1+2)已成功复制到剪贴板！';
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(combined).then(() => {
       showToast(successToast);
@@ -2443,9 +2443,10 @@ function renderKeyingModalContent() {
     const g = item.gong;
     const analysis = getPalaceAnalysis(p, g);
     const sec = document.createElement('div');
-    sec.style.marginBottom = '16px';
-    sec.style.borderBottom = '1px solid #ddd';
-    sec.style.paddingBottom = '12px';
+    sec.className = 'keying-palace-section';
+    sec.style.marginBottom = '14px';
+    sec.style.borderBottom = '1px solid var(--md-sys-color-outline-variant, #ddd)';
+    sec.style.paddingBottom = '10px';
 
     let headerBadgeHtml = '';
     let noticeBannerHtml = '';
