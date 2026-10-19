@@ -267,6 +267,27 @@ body {
   background-color: rgba(30, 83, 183, 0.08);
 }
 
+/* Subtle Button (次要操作/清空重置) */
+.m3-btn-subtle {
+  background-color: var(--md-sys-color-surface-container, #f1f3f8);
+  color: var(--md-sys-color-on-surface-variant, #44474f);
+  border: 1px solid var(--md-sys-color-outline-variant, #c4c6d0);
+  font-weight: 500;
+}
+.m3-btn-subtle:hover {
+  background-color: var(--md-sys-color-surface-container-high, #e7e8ee);
+  color: var(--md-sys-color-on-surface, #1b1b1f);
+}
+[data-theme="dark"] .m3-btn-subtle {
+  background-color: var(--md-sys-color-surface-container, #1f2329);
+  color: var(--md-sys-color-on-surface-variant, #c4c6d0);
+  border-color: var(--md-sys-color-outline-variant, #44474f);
+}
+[data-theme="dark"] .m3-btn-subtle:hover {
+  background-color: var(--md-sys-color-surface-container-high, #292d34);
+  color: var(--md-sys-color-on-surface, #e3e2e6);
+}
+
 /* Icon Button */
 .m3-icon-btn {
   width: 40px;
@@ -4074,7 +4095,48 @@ body {
 .modal-yongshen-dialog {
   max-width: 680px;
   width: 94vw;
-  max-height: 86vh;
+  max-height: calc(100dvh - 32px);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.yongshen-dialog-headline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.yongshen-dialog-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 4px;
+  padding-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.modal-yongshen-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  width: 100%;
+}
+
+.yongshen-action-group-sub,
+.yongshen-action-group-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .yongshen-section-label {
@@ -4201,14 +4263,140 @@ body {
   .board-card-header {
     flex-wrap: wrap;
     gap: 6px;
+    justify-content: space-between;
+    align-items: center;
   }
   .board-card-center {
     order: 3;
-    max-width: 100%;
-    width: 100%;
-    margin-top: 4px;
-    font-size: 12.5px;
-    padding: 3px 10px;
+    width: fit-content !important;
+    max-width: 95% !important;
+    margin: 6px auto 2px !important;
+    font-size: 15.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px !important;
+    padding: 5px 22px !important;
+    border-radius: var(--md-shape-corner-full) !important;
+    background-color: var(--md-sys-color-surface-container) !important;
+    border: 1px solid var(--md-sys-color-outline-variant) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--md-sys-color-primary) !important;
+  }
+
+  [data-theme="dark"] .board-card-center {
+    background-color: var(--md-sys-color-surface-container-high) !important;
+    border-color: rgba(180, 197, 255, 0.22) !important;
+    color: #b4c5ff !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  /* 移动端选取用神与问事弹窗界面显示效果与按键大小优化 */
+  #modalYongShen.m3-dialog-scrim {
+    padding: 8px 6px calc(env(safe-area-inset-bottom, 8px) + 8px) 6px !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .modal-yongshen-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px) !important;
+    max-height: calc(100vh - 24px) !important;
+    height: auto !important;
+    padding: 12px 10px 10px !important;
+    border-radius: var(--md-shape-corner-large) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .yongshen-dialog-headline {
+    flex-shrink: 0 !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .yongshen-dialog-headline span {
+    font-size: 15.5px !important;
+    font-weight: 700 !important;
+  }
+
+  .yongshen-dialog-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    padding: 2px 2px 8px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+  }
+
+  /* 移动端用神选项卡片与文字大小优化 */
+  .ys-group-box {
+    margin-top: 8px !important;
+    padding: 6px 8px !important;
+    border-radius: 8px !important;
+  }
+
+  .ys-group-title {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    margin-bottom: 5px !important;
+  }
+
+  .ys-chips-row {
+    gap: 5px !important;
+  }
+
+  .ys-chip {
+    padding: 5px 8px !important;
+    font-size: 12.5px !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  /* 移动端下方按键UI大小与布局优化：两行各二，尺寸适中统一，不占过多纵深 */
+  .modal-yongshen-actions {
+    flex-shrink: 0 !important;
+    padding: 8px 0 0 !important;
+    border-top: 1px solid var(--md-sys-color-outline-variant) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .yongshen-action-group-sub,
+  .yongshen-action-group-main {
+    display: flex !important;
+    width: 100% !important;
+    gap: 6px !important;
+    align-items: center !important;
+  }
+
+  .yongshen-action-group-sub .m3-btn,
+  .yongshen-action-group-main .m3-btn {
+    flex: 1 !important;
+    height: 35px !important;
+    font-size: 12.5px !important;
+    font-weight: 550 !important;
+    padding: 0 8px !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    border-radius: var(--md-shape-corner-full) !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .yongshen-action-group-main #btnConfirmYongShen {
+    flex: 1.4 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
   }
 }
 

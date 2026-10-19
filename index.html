@@ -825,16 +825,16 @@
 
   <!-- M3 选取用神与问事 Dialog -->
   <div class="m3-dialog-scrim" id="modalYongShen">
-    <div class="m3-dialog modal-yongshen-dialog" style="max-width: 680px; width: 92vw; max-height: 88vh; display: flex; flex-direction: column;">
-      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color: var(--md-sys-color-primary);"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-          <span>选取用神与所问事项</span>
+    <div class="m3-dialog modal-yongshen-dialog">
+      <div class="m3-dialog-headline yongshen-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color: var(--md-sys-color-primary); flex-shrink: 0;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">选取用神与所问事项</span>
         </div>
-        <button class="m3-icon-btn" data-close="modalYongShen" title="关闭">✕</button>
+        <button class="m3-icon-btn" data-close="modalYongShen" title="关闭" style="flex-shrink: 0;">✕</button>
       </div>
 
-      <div class="m3-dialog-body" style="overflow-y: auto; flex: 1; padding-top: 4px; padding-bottom: 12px;">
+      <div class="m3-dialog-body yongshen-dialog-body" id="modalYongShenBody">
         <!-- 1. 所问问题输入 -->
         <div class="yongshen-section">
           <label class="yongshen-section-label" for="iptUserQuestion">
@@ -996,15 +996,15 @@
         </div>
       </div>
 
-      <div class="m3-dialog-actions" style="padding: 10px 16px; border-top: 1px solid var(--md-sys-color-outline-variant); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <button class="m3-btn m3-btn-subtle" type="button" id="btnResetYongShen">重置清空</button>
+      <div class="m3-dialog-actions modal-yongshen-actions">
+        <div class="yongshen-action-group-sub">
+          <button class="m3-btn m3-btn-subtle" type="button" id="btnResetYongShen" title="清空所有已勾选用神">重置清空</button>
           <button class="m3-btn m3-btn-tonal" type="button" id="btnStartManualGridPick" title="关闭弹窗，直接在九宫格盘面上点击八神、九星、八门、天干、地干进行圈选">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-            手动选取用神
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            <span>手动选取用神</span>
           </button>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="yongshen-action-group-main">
           <button class="m3-btn m3-btn-outlined" type="button" data-close="modalYongShen">取消</button>
           <button class="m3-btn m3-btn-filled" type="button" id="btnConfirmYongShen">确定并框选用神</button>
         </div>
