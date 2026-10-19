@@ -147,12 +147,47 @@ function initShiganSwitchDelegation() {
   });
 }
 
-// 1. Service Worker 注册 (PWA 离线支持)
+// 1. Service Worker 注册 (PWA 离线支持与自动热更新)
 function initServiceWorker() {
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('[PWA] Service Worker Registered successfully:', reg.scope))
+      .then(reg => {
+        console.log('[PWA] Service Worker Registered successfully:', reg.scope);
+        // 主动探测远端版本更新
+        if (typeof reg.update === 'function') {
+          reg.update().catch(() => {});
+        }
+      })
       .catch(err => console.warn('[PWA] Service Worker registration failed:', err));
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+  }
+
+  // 绑定设置弹窗中的“检查更新”按钮
+  const btnForceUpdate = document.getElementById('btnForceUpdateApp');
+  if (btnForceUpdate) {
+    btnForceUpdate.addEventListener('click', async () => {
+      btnForceUpdate.textContent = '更新中...';
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+      } catch (e) {
+        console.warn('[PWA] Clear cache error:', e);
+      }
+      window.location.href = window.location.pathname + '?v=' + Date.now();
+    });
   }
 }
 
