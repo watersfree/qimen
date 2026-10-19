@@ -3847,28 +3847,31 @@ body {
     width: 100% !important;
     max-width: 350px !important;
     height: auto !important;
+    min-height: 350px !important;
     max-height: none !important;
-    aspect-ratio: 1 / 1 !important;
+    grid-template-rows: repeat(3, 1fr) !important;
     gap: 5px !important;
-    padding: 7px 7px 9px !important;
+    padding: 8px 8px 12px !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
     flex-shrink: 0 !important;
+    border-radius: var(--md-shape-corner-large);
   }
 
   .palace-cell {
-    padding: 6px 4px;
+    padding: 5px 3px;
+    min-height: 0;
   }
 
   .cell-row-top {
-    gap: 4px;
+    gap: 3px;
     padding: 0 1px;
   }
 
   .cell-row-mid,
   .cell-row-bot {
-    gap: 4px;
-    padding: 0 4px;
+    gap: 3px;
+    padding: 0 3px;
   }
 
   .spirit-tag,
