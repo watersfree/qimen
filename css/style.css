@@ -3844,23 +3844,35 @@ body {
 
   .nine-grid,
   .simple-mode .nine-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: auto !important;
+    gap: 6px !important;
+    padding: 8px 8px 12px !important;
     width: 100% !important;
     max-width: 350px !important;
     height: auto !important;
-    min-height: 350px !important;
+    min-height: auto !important;
     max-height: none !important;
-    grid-template-rows: repeat(3, 1fr) !important;
-    gap: 5px !important;
-    padding: 8px 8px 12px !important;
+    aspect-ratio: auto !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
     flex-shrink: 0 !important;
-    border-radius: var(--md-shape-corner-large);
+    border-radius: var(--md-shape-corner-large) !important;
+    overflow: hidden !important;
   }
 
   .palace-cell {
-    padding: 5px 3px;
-    min-height: 0;
+    aspect-ratio: 1 / 1 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    padding: 5px 3px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
   }
 
   .cell-row-top {
