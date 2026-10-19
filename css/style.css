@@ -669,6 +669,7 @@ body {
     gap: 6px !important;
   }
   .simple-mode .board-card {
+    display: block !important;
     height: auto !important;
     min-height: auto !important;
     max-height: none !important;
@@ -3702,6 +3703,7 @@ body {
 @media (min-width: 601px) and (max-width: 960px) {
   .board-card,
   .simple-mode .board-card {
+    display: block !important;
     height: auto !important;
     min-height: auto !important;
     max-height: none !important;
@@ -4324,25 +4326,28 @@ body {
 }
 
 @media (max-width: 600px) {
+  .left-column {
+    height: auto !important;
+  }
+
   .board-card,
   .simple-mode .board-card {
+    display: block !important;
     height: auto !important;
     min-height: auto !important;
     max-height: none !important;
     padding: 12px 12px 24px !important;
     box-sizing: border-box !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
+    overflow: visible !important;
   }
 
   .board-card-header,
   .simple-mode .board-card-header {
+    display: flex !important;
     height: auto !important;
     min-height: 32px !important;
     max-height: none !important;
-    margin-bottom: 2px !important;
+    margin-bottom: 10px !important;
     flex-wrap: wrap;
     gap: 6px;
     justify-content: space-between;
