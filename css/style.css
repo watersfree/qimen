@@ -3849,7 +3849,7 @@ body {
     grid-template-rows: none !important;
     grid-auto-rows: auto !important;
     gap: 6px !important;
-    padding: 8px 8px 12px !important;
+    padding: 8px !important;
     width: 100% !important;
     max-width: 350px !important;
     height: auto !important;
