@@ -1,4 +1,5 @@
 # Tests and scratch scripts
+scratch/
 test_*.py
 check_*.py
 check_*.mjs

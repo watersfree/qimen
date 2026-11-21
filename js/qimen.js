@@ -21,6 +21,8 @@ import {
   BAMEN_GAN_KEYING, JIUXING_KEYING
 } from './database.js';
 
+import { YONGSHEN_ROLE_MAP } from './presets.js';
+
 // 八宫环 (后天八卦旋转轨道): 坎1 艮8 震3 巽4 离9 坤2 兑7 乾6
 export const BAGUA_RING = [1, 8, 3, 4, 9, 2, 7, 6];
 export const RING_INDEX = { 1: 0, 8: 1, 3: 2, 4: 3, 9: 4, 2: 5, 7: 6, 6: 7 };
@@ -47,6 +49,30 @@ export const HE_GAN_MAP = {
   '戊': '癸', '癸': '戊'
 };
 
+// 同性相克字典 (阳克阳，阴克阴)
+export const KE_GAN_MAP = {
+  '甲': '戊', '乙': '己', '丙': '庚', '丁': '辛', '戊': '壬',
+  '己': '癸', '庚': '甲', '辛': '乙', '壬': '丙', '癸': '丁'
+};
+
+export const BEI_KE_GAN_MAP = {
+  '甲': '庚', '乙': '辛', '丙': '壬', '丁': '癸', '戊': '甲',
+  '己': '乙', '庚': '丙', '辛': '丁', '壬': '戊', '癸': '己'
+};
+
+// 八卦宫位对应字典
+export const BAGUA_GONG_MAP = {
+  '坎': 1, '坎宫': 1,
+  '坤': 2, '坤宫': 2,
+  '震': 3, '震宫': 3,
+  '巽': 4, '巽宫': 4,
+  '中': 5, '中宫': 5,
+  '乾': 6, '乾宫': 6,
+  '兑': 7, '兑宫': 7,
+  '艮': 8, '艮宫': 8,
+  '离': 9, '离宫': 9
+};
+
 // 判定宫位是否匹配所选取的用神
 export function checkPalaceMatchYongShen(pan, g, yongShenList) {
   if (!pan || !yongShenList || yongShenList.length === 0) {
@@ -62,7 +88,7 @@ export function checkPalaceMatchYongShen(pan, g, yongShenList) {
   const door = (pan.tianpanDoor && pan.tianpanDoor[g]) || '';
   const star = (pan.tianpanStar && pan.tianpanStar[g]) || '';
   const spirit = (pan.tianpanSpirit && pan.tianpanSpirit[g]) || '';
-  const hasMa = !!(pan.palaceFlags && pan.palaceFlags[g] && pan.palaceFlags[g].hasMa);
+  const hasMa = !!(pan.palaceFlags && pan.palaceFlags[g] && (pan.palaceFlags[g].hasMa || pan.palaceFlags[g].isMa));
   const isKong = !!(pan.palaceFlags && pan.palaceFlags[g] && pan.palaceFlags[g].isKong);
   const gongNames = [String(g), GONG_CN[g] || '', `${GONG_CN[g]}宫`];
 
@@ -71,10 +97,13 @@ export function checkPalaceMatchYongShen(pan, g, yongShenList) {
   const yearGan = pan.pillars && pan.pillars.year ? pan.pillars.year[0] : '';
   const monthGan = pan.pillars && pan.pillars.month ? pan.pillars.month[0] : '';
   const heGan = HE_GAN_MAP[dayGan] || '';
+  const keGan = KE_GAN_MAP[dayGan] || '';
+  const beiKeGan = BEI_KE_GAN_MAP[dayGan] || '';
 
   const matchedItems = [];
 
-  for (const ys of yongShenList) {
+  for (const rawYs of yongShenList) {
+    const ys = (typeof rawYs === 'object' && rawYs !== null) ? (rawYs.name || '') : String(rawYs);
     let hit = false;
     if (ys === '日干') {
       if (tg === dayGan || tj === dayGan) hit = true;
@@ -84,8 +113,24 @@ export function checkPalaceMatchYongShen(pan, g, yongShenList) {
       if (tg === yearGan || tj === yearGan) hit = true;
     } else if (ys === '月干') {
       if (tg === monthGan || tj === monthGan) hit = true;
-    } else if (ys === '合干') {
+    } else if (ys === '合干' || ys === '相合之干') {
       if (heGan && (tg === heGan || tj === heGan)) hit = true;
+    } else if (ys === '所克之干' || ys === '我克之干') {
+      if (keGan && (tg === keGan || tj === keGan)) hit = true;
+    } else if (ys === '克我之干') {
+      if (beiKeGan && (tg === beiKeGan || tj === beiKeGan)) hit = true;
+    } else if (BAGUA_GONG_MAP[ys] === g) {
+      hit = true;
+    } else if (ys === '对冲宫' || ys === '日干对冲宫' || ys === '对冲') {
+      let dayG = 0;
+      for (let dg = 1; dg <= 9; dg++) {
+        if (pan.tianpanGan && (pan.tianpanGan[dg] === dayGan || (pan.tianpanJigan && pan.tianpanJigan[dg] === dayGan))) {
+          dayG = dg;
+          break;
+        }
+      }
+      const OPPOSITE_GONG = { 1: 9, 9: 1, 2: 8, 8: 2, 3: 7, 7: 3, 4: 6, 6: 4 };
+      if (dayG && OPPOSITE_GONG[dayG] === g) hit = true;
     } else if (['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'].includes(ys)) {
       if (tg === ys || tj === ys) hit = true;
     } else if (ys === '值符' || ys === '直符') {
@@ -94,6 +139,7 @@ export function checkPalaceMatchYongShen(pan, g, yongShenList) {
       if (spirit === ys) hit = true;
     } else if (['天蓬', '天芮', '天冲', '天辅', '天禽', '天心', '天柱', '天任', '天英'].includes(ys) || ys.startsWith('天')) {
       if (star.includes(ys)) hit = true;
+      if (g === 2 && ys === '天禽' && star.includes('天芮')) hit = true;
     } else if (['休门', '生门', '伤门', '杜门', '景门', '死门', '惊门', '开门'].includes(ys) || ys.endsWith('门')) {
       if (door === ys || door.includes(ys.replace('门', ''))) hit = true;
     } else if (ys === '马星') {
@@ -2279,8 +2325,308 @@ export function getYingqiXunKongAnalysis(pan, gong) {
   };
 }
 
+// ----------------- 叶鸿生单宫读象精简关键词字典 (2~3个关键词，天干为主角，星门神皆为形容词) -----------------
+export const ESSENCE_KEYWORDS = {
+  // 天干外在 (天盘干，外表/外观/表象)
+  tian: {
+    '甲': { ren: '正直高大', wu: '粗壮立柱', shi: '统领发端' },
+    '乙': { ren: '柔韧借力', wu: '弯曲藤蔓', shi: '顺势借势' },
+    '丙': { ren: '急躁热情', wu: '发热发光', shi: '声名显扬' },
+    '丁': { ren: '文明细致', wu: '微光发亮', shi: '暗生希望' },
+    '戊': { ren: '稳重厚道', wu: '厚重凸起', shi: '资金沉淀' },
+    '己': { ren: '含蓄内敛', wu: '低平小坨', shi: '杂乱琐碎' },
+    '庚': { ren: '刚毅决断', wu: '坚硬铁器', shi: '阻隔冲突' },
+    '辛': { ren: '变通机巧', wu: '颗粒珠宝', shi: '改革错误' },
+    '壬': { ren: '通达奔波', wu: '流水流动', shi: '变动推进' },
+    '癸': { ren: '迷茫内向', wu: '暗昧潮湿', shi: '潜藏酝酿' }
+  },
+  // 天干内在 (地盘干，心性/材质/根基)
+  di: {
+    '甲': { ren: '顶天立地', wu: '木质栋梁', shi: '根基深厚' },
+    '乙': { ren: '依附顺应', wu: '植物纤维', shi: '牵连纠葛' },
+    '丙': { ren: '内心焦灼', wu: '热源火种', shi: '表里皆热' },
+    '丁': { ren: '心思敏锐', wu: '烛芯针灸', shi: '暗藏生机' },
+    '戊': { ren: '诚信忠厚', wu: '土石根底', shi: '资本厚实' },
+    '己': { ren: '多思多疑', wu: '平地软泥', shi: '隐忍杂念' },
+    '庚': { ren: '内怀杀气', wu: '刚金硬骨', shi: '骨鲠在喉' },
+    '辛': { ren: '追求完美', wu: '细密五金', shi: '精细瑕疵' },
+    '壬': { ren: '通透灵活', wu: '深渊大泽', shi: '暗流涌动' },
+    '癸': { ren: '深沉多虑', wu: '阴湿沉淀', shi: '晦涩难测' }
+  },
+  // 九星 (性格/形状/趋势)
+  star: {
+    '天蓬': { ren: '胆大·暗中行事', wu: '中空近水', shi: '投机冒险' },
+    '天任': { ren: '厚道·稳扎稳打', wu: '土石厚实', shi: '持重守成' },
+    '天冲': { ren: '雷厉·冲动迅疾', wu: '高耸直指', shi: '急迫突发' },
+    '天辅': { ren: '儒雅·注重文化', wu: '文书器物', shi: '教育受助' },
+    '天英': { ren: '热烈·注重形象', wu: '艳丽光明', shi: '虚名在外' },
+    '天芮': { ren: '包容·暗藏毛病', wu: '瑕疵破旧', shi: '隐疾阻碍' },
+    '天柱': { ren: '能言·中流破坏', wu: '立柱残缺', shi: '争议毁伤' },
+    '天心': { ren: '周密·善于谋略', wu: '核心中枢', shi: '统筹规划' },
+    '天禽': { ren: '中正·稳健包容', wu: '中正方圆', shi: '大局调和' }
+  },
+  // 八门 (情绪心态/事态进行)
+  door: {
+    '休门': { ren: '休养闲适', wu: '安逸之物', shi: '调养休整' },
+    '生门': { ren: '进取积极', wu: '增值资产', shi: '谋利发展' },
+    '伤门': { ren: '好强争斗', wu: '车辆利刃', shi: '受伤冲突' },
+    '杜门': { ren: '闭塞隐蔽', wu: '门户锁钥', shi: '暗中阻塞' },
+    '景门': { ren: '展现张扬', wu: '文书契约', shi: '行情公开' },
+    '死门': { ren: '固执消极', wu: '废旧重物', shi: '停滞不动' },
+    '惊门': { ren: '心神不宁', wu: '声响器械', shi: '口舌惊恐' },
+    '开门': { ren: '开朗沟通', wu: '开阔之物', shi: '公开推进' }
+  },
+  // 八神 (神态/潜意识/感觉)
+  spirit: {
+    '值符': { ren: '领袖正气', wu: '贵重珍品', shi: '贵人相助' },
+    '螣蛇': { ren: '虚惊多疑', wu: '弯曲绳线', shi: '反复纠缠' },
+    '太阴': { ren: '深沉内省', wu: '阴凉隐蔽', shi: '暗中谋划' },
+    '六合': { ren: '和睦善交', wu: '成套结合', shi: '合作中介' },
+    '白虎': { ren: '凶猛好斗', wu: '凶器硬物', shi: '强硬压迫' },
+    '玄武': { ren: '暗中算计', wu: '不明失物', shi: '虚假不实' },
+    '九地': { ren: '沉稳包容', wu: '低平平稳', shi: '长久缓慢' },
+    '九天': { ren: '志向高远', wu: '高空飞行', shi: '展翅高飞' }
+  },
+  // 八卦宫位姿态定位
+  bagua: {
+    '坎': '陷·潜藏深沉',
+    '坤': '顺·包容被动',
+    '震': '动·震动突变',
+    '巽': '风·灵活漂浮',
+    '中': '中·寄坤包容',
+    '乾': '健·刚健主动',
+    '兑': '悦·喜悦善言',
+    '艮': '止·厚重稳止',
+    '离': '丽·光明急躁'
+  }
+};
+
+// 严格以【月令月支】为纲计算宫位的旺衰 (旺、相、休、囚、死五档，表达力量强弱，不带吉凶偏见)
+export function getPalaceYuelingSimple(pan, gong) {
+  if (!pan || !pan.pillars || !pan.pillars.month) {
+    return { text: '平', level: '平', tagClass: 'status-ping', desc: '月令未定' };
+  }
+  const monthStr = pan.pillars.month;
+  const monthZhi = monthStr.length >= 2 ? monthStr[1] : monthStr[0];
+  const mElem = MONTH_ZHI_ELEMENT[monthZhi] || '土';
+  const pInfo = DIPAN_PALACE_INFO[gong];
+  if (!pInfo) return { text: '平', level: '平', tagClass: 'status-ping', desc: '无宫位' };
+  const pElem = pInfo.element;
+
+  const SHENG = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+  const KE = { '木': '土', '土': '水', '水': '火', '火': '金', '金': '木' };
+
+  let level = '平';
+  let tagClass = 'status-ping';
+  let desc = '';
+
+  if (pElem === mElem) {
+    level = '旺';
+    tagClass = 'status-wang';
+    desc = `${monthZhi}月·${mElem}同${pElem}`;
+  } else if (SHENG[mElem] === pElem) {
+    level = '相';
+    tagClass = 'status-xiang';
+    desc = `${monthZhi}月·${mElem}生${pElem}`;
+  } else if (SHENG[pElem] === mElem) {
+    level = '休';
+    tagClass = 'status-xiu';
+    desc = `${monthZhi}月·${pElem}泄${mElem}`;
+  } else if (KE[pElem] === mElem) {
+    level = '囚';
+    tagClass = 'status-qiu';
+    desc = `${monthZhi}月·${pElem}克${mElem}`;
+  } else if (KE[mElem] === pElem) {
+    level = '死';
+    tagClass = 'status-si';
+    desc = `${monthZhi}月·${mElem}克${pElem}`;
+  }
+
+  return {
+    monthZhi,
+    mElem,
+    pElem,
+    level,
+    tagClass,
+    text: `${monthZhi}月·${mElem}[${level}]`,
+    desc
+  };
+}
+
+// 提取天盘干的核心长生阶段 (叶鸿生原则：只标长生、临官、帝旺、墓四种核心阶段，入墓中性评述)
+export function getTianpanChangshengStage(tg, gong) {
+  if (!tg) return null;
+  const stageMap = TIANGAN_CHANGSHENG_MAP[tg] || {};
+  const pInfo = DIPAN_PALACE_INFO[gong];
+  const pZhi = pInfo ? (pInfo.dizhi || []) : [];
+
+  const CORE_STAGES = ['长生', '临官', '帝旺', '墓'];
+  for (const z of pZhi) {
+    const s = stageMap[z];
+    if (CORE_STAGES.includes(s)) {
+      if (s === '墓') {
+        return {
+          zhi: z,
+          stage: '入墓/入库',
+          shortText: `${tg}·入墓`,
+          desc: `${tg}落${z}为墓库（吉则收藏蓄力，凶则受阻收敛）`,
+          tagClass: 'status-neutral'
+        };
+      } else {
+        return {
+          zhi: z,
+          stage: s,
+          shortText: `${tg}·${s}`,
+          desc: `${tg}落${z}为${s}（得气发力阶段）`,
+          tagClass: 'status-neutral'
+        };
+      }
+    }
+  }
+  return null;
+}
+
+// 计算本宫状态徽章列表 (时空、马星、击刑、暗冲：击刑专用红色，其余中性强调色)
+export function getPalaceStatusBadges(pan, gong) {
+  const badges = [];
+  if (!pan) return badges;
+  const flag = (pan.palaceFlags && pan.palaceFlags[gong]) ? pan.palaceFlags[gong] : {};
+  const tg = pan.tianpanGan ? (pan.tianpanGan[gong] || '') : '';
+  const dg = pan.dipan ? (pan.dipan[gong] || '') : '';
+
+  // 1. 六仪击刑/自刑 (唯独它明确带损伤，使用红色)
+  const sc = getTianganSixChanges(pan, gong);
+  if (sc && sc.xing && sc.xing.isXing) {
+    badges.push({
+      type: 'xing',
+      text: sc.xing.type === 'zixing' ? '自刑' : '击刑',
+      fullText: sc.xing.type === 'zixing' ? '六仪自刑' : '六仪击刑',
+      tagClass: 'badge-jixing',
+      title: sc.xing.desc
+    });
+  }
+
+  // 2. 旬空 (中性蓝紫)
+  if (flag.isKong) {
+    badges.push({
+      type: 'kong',
+      text: '时空',
+      fullText: '时柱旬空',
+      tagClass: 'badge-kong',
+      title: '时柱逢空：人物看对宫，事不看对宫，物主虚设'
+    });
+  }
+
+  // 3. 驿马 (中性蓝紫)
+  if (flag.hasMa) {
+    badges.push({
+      type: 'ma',
+      text: '马星',
+      fullText: '驿马星',
+      tagClass: 'badge-maxing',
+      title: '宫临马星：主快速变动、出行走动或事态推进疾速'
+    });
+  }
+
+  // 4. 宫内暗冲 (戊落离、辛落坎：中性蓝紫)
+  if (gong === 9 && (tg === '戊' || dg === '戊')) {
+    badges.push({
+      type: 'anchong',
+      text: '暗冲',
+      fullText: '戊离暗冲',
+      tagClass: 'badge-anchong',
+      title: '戊落离九宫：有一股能量向对宫坎一冲射'
+    });
+  } else if (gong === 1 && (tg === '辛' || dg === '辛')) {
+    badges.push({
+      type: 'anchong',
+      text: '暗冲',
+      fullText: '辛坎暗冲',
+      tagClass: 'badge-anchong',
+      title: '辛落坎一宫：有一股能量向对宫离九冲射'
+    });
+  }
+
+  return badges;
+}
+
+// 综合生成本宫一句话画像小结 (叶鸿生模板：宫姿态 + 天盘干之象 + 内里地盘干 + 星性格 + 门状态 + 神感觉 + 关键状态)
+export function generatePalaceSummary(pan, gong, yongshenNature = 'person') {
+  if (!pan) return '';
+  const pInfo = DIPAN_PALACE_INFO[gong];
+  const bagua = pInfo ? pInfo.bagua : '';
+  const baguaPosture = ESSENCE_KEYWORDS.bagua[bagua] || '从容处之';
+  const postureWord = baguaPosture.split('·')[1] || baguaPosture;
+
+  const tg = pan.tianpanGan ? (pan.tianpanGan[gong] || '') : '';
+  const dg = pan.dipan ? (pan.dipan[gong] || '') : '';
+  const tgWords = ESSENCE_KEYWORDS.tian[tg] || {};
+  const dgWords = ESSENCE_KEYWORDS.di[dg] || {};
+
+  const star = pan.tianpanStar ? (pan.tianpanStar[gong] || '').replace(/星/g, '').trim() : '';
+  const starClean = star.includes('天芮') ? '天芮' : star;
+  const starWords = ESSENCE_KEYWORDS.star[starClean] || {};
+
+  const door = pan.tianpanDoor ? (pan.tianpanDoor[gong] || '') : '';
+  const doorWords = ESSENCE_KEYWORDS.door[door] || {};
+
+  const spirit = pan.tianpanSpirit ? (pan.tianpanSpirit[gong] || '') : '';
+  const spiritWords = ESSENCE_KEYWORDS.spirit[spirit] || {};
+
+  const flag = pan.palaceFlags && pan.palaceFlags[gong] ? pan.palaceFlags[gong] : {};
+  const stageMap = TIANGAN_CHANGSHENG_MAP[tg] || {};
+  const palaceZhi = pInfo ? (pInfo.dizhi || []) : [];
+  const stages = palaceZhi.map(z => stageMap[z] || '');
+  const isMu = stages.includes('墓');
+  const isSheng = stages.includes('长生');
+  const isGuan = stages.includes('临官');
+  const isWang = stages.includes('帝旺');
+  const sc = getTianganSixChanges(pan, gong);
+  const isXing = sc && sc.xing && sc.xing.isXing;
+  const isKong = !!flag.isKong;
+  const isMa = !!flag.hasMa;
+
+  let stateSentence = '';
+  if (isXing) {
+    stateSentence = `逢六仪击刑，防受损折磨或内部矛盾`;
+  } else if (isMu) {
+    stateSentence = `${tg}入墓库，有被困、收敛之象（吉则暗藏蓄力，凶则受阻停滞）`;
+  } else if (isWang || isGuan) {
+    stateSentence = `${tg}逢${isWang ? '帝旺' : '临官'}，气场强盛、处于得势发力之期`;
+  } else if (isSheng) {
+    stateSentence = `${tg}逢长生，生机勃发、新意萌动`;
+  } else if (isKong) {
+    stateSentence = `落入旬空，心力虚悬，有待填实`;
+  } else if (isMa) {
+    stateSentence = `临驿马星，身处快速变动奔波之中`;
+  }
+
+  if (yongshenNature === 'object') {
+    const tgWu = tgWords.wu || `${tg}外观`;
+    const dgWu = dgWords.wu || `${dg}材质`;
+    const starWu = starWords.wu || '';
+    const doorWu = doorWords.wu || '';
+    const spiritWu = spiritWords.wu || '';
+    return `具有${postureWord}之质，外观呈${tgWu}，内里为${dgWu}${starWu ? '；形状偏' + starWu : ''}${doorWu ? '，兼具' + doorWu + '之性' : ''}${spiritWu ? '，整体偏' + spiritWu : ''}${stateSentence ? '；' + stateSentence : ''}。`;
+  } else if (yongshenNature === 'matter') {
+    const tgShi = tgWords.shi || `${tg}态势`;
+    const dgShi = dgWords.shi || `${dg}根基`;
+    const starShi = starWords.shi || '';
+    const doorShi = doorWords.shi || '';
+    const spiritShi = spiritWords.shi || '';
+    return `大局呈现${postureWord}之势，事态表象为${tgShi}，内在根基为${dgShi}${starShi ? '；天时趋向' + starShi : ''}${doorShi ? '，进程处于' + doorShi : ''}${spiritShi ? '，暗合' + spiritShi : ''}${stateSentence ? '；' + stateSentence : ''}。`;
+  } else {
+    const tgRen = tgWords.ren || `${tg}外表`;
+    const dgRen = dgWords.ren || `${dg}心性`;
+    const starRen = starWords.ren || '';
+    const doorRen = doorWords.ren || '';
+    const spiritRen = spiritWords.ren || '';
+    return `${tgRen}的人，内里${dgRen}${starRen ? '；' + starRen : ''}${doorRen ? '，对外' + doorRen : ''}${spiritRen ? '，神态偏' + spiritRen : ''}${stateSentence ? '；' + stateSentence : ''}。`;
+  }
+}
+
 // ----------------- 天盘实战克应与天干六变综合合并分析器 (严格遵循叶鸿生标准) -----------------
-export function getPalaceMergedAnalysis(pan, gong) {
+export function getPalaceMergedAnalysis(pan, gong, curYongShenList = null, curQuestion = '', curNature = 'auto') {
   if (gong === 5 && pan.paipanMethod === 'zhuan') return null;
 
   const tianGan = pan.tianpanGan[gong] || '';
@@ -2295,6 +2641,27 @@ export function getPalaceMergedAnalysis(pan, gong) {
 
   const rows = [];
 
+  // 获取用神与角色
+  const activeYongShen = Array.isArray(curYongShenList) ? curYongShenList :
+    ((pan && pan.selectedYongShen) ? pan.selectedYongShen : ((typeof state !== 'undefined' && state.selectedYongShen) ? state.selectedYongShen : ['值符']));
+  const matchRes = checkPalaceMatchYongShen(pan, gong, activeYongShen);
+  let yongshenRoleText = '';
+  let activeNature = curNature !== 'auto' ? curNature : 'person';
+  if (matchRes && matchRes.matched) {
+    const roles = matchRes.items.map(name => {
+      if (pan && pan.yongshenNatures && pan.yongshenNatures[name]) {
+        activeNature = pan.yongshenNatures[name];
+      }
+      return YONGSHEN_ROLE_MAP ? (YONGSHEN_ROLE_MAP[name] || name) : name;
+    });
+    yongshenRoleText = roles.join('、');
+  }
+
+  // 状态徽章与月令旺衰
+  const statusBadges = getPalaceStatusBadges(pan, gong);
+  const yuelingSimple = getPalaceYuelingSimple(pan, gong);
+  const palaceSummary = generatePalaceSummary(pan, gong, activeNature);
+
   // 象意人象与事物结构化 HTML 生成器 (人物在第一行，事物在第二行，支持全部/物象/人象响应式切换)
   const formatRenWuHtml = (title, descText) => {
     if (!descText) return `<div class="imagery-cell-box"><div class="imagery-line"><span class="imagery-item-title">${title}</span></div></div>`;
@@ -2306,12 +2673,12 @@ export function getPalaceMergedAnalysis(pan, gong) {
         <div class="imagery-cell-box">
           <div class="imagery-aspect-row ren">
             <span class="imagery-item-title">${title}：</span>
-            <span class="imagery-section-badge ren">人物</span>
+            <span class="imagery-section-badge ren">人象</span>
             <span class="imagery-section-text ren">${ren}</span>
           </div>
           <div class="imagery-aspect-row wu">
             <span class="imagery-item-title">${title}：</span>
-            <span class="imagery-section-badge wu">事物</span>
+            <span class="imagery-section-badge wu">物象</span>
             <span class="imagery-section-text wu">${wu}</span>
           </div>
         </div>
@@ -2320,24 +2687,15 @@ export function getPalaceMergedAnalysis(pan, gong) {
     return `<div class="imagery-cell-box"><div class="imagery-line"><span class="imagery-item-title">${title}：</span><span class="imagery-section-text">${descText}</span></div></div>`;
   };
 
-  // 1. 宫位
-  const structuredYueling = getPalaceYuelingStructured(pan, gong);
-  let cleanGongDesc = mem ? mem.gongDesc : '';
-  let gongDescText = mem ? `${mem.bagua}为${cleanGongDesc}` : gongName;
-  if (structuredYueling.formula) {
-    gongDescText += `\n${structuredYueling.formula}`;
-  }
+  // 1. 宫卦 (行 1: 定位和姿态，右侧不设多余状态，交由宫头统一展示)
+  const baguaPosture = ESSENCE_KEYWORDS.bagua[pInfo ? pInfo.bagua : ''] || (mem ? mem.gongDesc : '');
+  const gongDescText = `${pInfo ? pInfo.bagua : ''} = ${baguaPosture}，${pInfo ? pInfo.direction : ''}方`;
   const gongHtml = `
     <div class="imagery-cell-box">
       <div class="imagery-line">
-        <span class="imagery-item-title">${mem ? mem.bagua + '为' : ''}</span>
-        <span class="imagery-section-text gong">${cleanGongDesc}</span>
+        <span class="imagery-item-title">${pInfo ? pInfo.bagua : ''}卦：</span>
+        <span class="imagery-section-text gong">${baguaPosture}（${pInfo ? pInfo.direction : ''}方·${pInfo ? pInfo.element : ''}）</span>
       </div>
-      ${structuredYueling.formula ? `
-      <div class="imagery-line gong-formula-line">
-        <span class="imagery-extra-text">${structuredYueling.formula}</span>
-      </div>
-      ` : ''}
     </div>
   `.trim();
   rows.push({
@@ -2345,12 +2703,11 @@ export function getPalaceMergedAnalysis(pan, gong) {
     tagClass: 'gong',
     content: gongDescText,
     html: gongHtml,
-    status: structuredYueling.status || '平',
-    statusClass: structuredYueling.status.includes('旺') ? 'wang' :
-      (structuredYueling.status.includes('克') || structuredYueling.status.includes('制') || structuredYueling.status.includes('泄') || structuredYueling.status.includes('休') ? 'xiong' : 'ping')
+    status: '',
+    statusClass: ''
   });
 
-  // 2. 天盘干
+  // 2. 天盘干 (行 2: 主角，约 60%，外表或外观；右侧状态只标长生阶段：长生/临官/帝旺/入墓)
   const stemInfo = TIANGAN_TIANPAN_INFO[tianGan] || TIANGAN_MERGED_INFO[tianGan] || { name: tianGan, stemText: `${tianGan}气数平顺`, wuXiang: '', renXiang: '' };
   let stemContent = `${stemInfo.name || tianGan}：人象外表（${stemInfo.renXiang || stemInfo.stemText || ''}）；物象外观（${stemInfo.wuXiang || stemInfo.stemText || ''}）`;
   let stemHtmlLines = `
@@ -2383,30 +2740,22 @@ export function getPalaceMergedAnalysis(pan, gong) {
   }
   const stemHtml = `<div class="imagery-cell-box">${stemHtmlLines}</div>`.trim();
 
-  // 天盘干生旺死绝阶段
-  const stageMap = TIANGAN_CHANGSHENG_MAP[tianGan] || {};
-  const palaceZhi = pInfo ? (pInfo.dizhi || []) : [];
-  const stagesDetail = palaceZhi.map(z => `${z}为${stageMap[z] || '平'}`).join('、');
-  const stageKey = `${tianGan}-${gong}`;
-  const keyStageDesc = TIANGAN_KEY_STAGE_MEANINGS[stageKey] || '';
-  const stagesPrefix = palaceZhi.map(z => `落${z}为${stageMap[z] || '平'}`).join('、');
-  let stemStatus = stagesPrefix ? `${stagesPrefix}，${keyStageDesc || '气数平顺'}` : (keyStageDesc || '气数平顺');
-  let stemStatusClass = 'ping';
-  if (keyStageDesc.includes('入墓') || keyStageDesc.includes('自刑') || keyStageDesc.includes('击刑')) {
-    stemStatusClass = 'xiong';
-  } else if (keyStageDesc.includes('长生')) {
-    stemStatusClass = 'wang';
-  }
+  // 天盘干只标长生阶段 (长生、临官、帝旺、墓)
+  const changshengStage = getTianpanChangshengStage(tianGan, gong);
+  let stemStatus = changshengStage ? changshengStage.shortText : '';
+  let stemStatusClass = changshengStage ? changshengStage.tagClass : '';
+
   rows.push({
     tag: '天盘干',
     tagClass: 'stem',
     content: stemContent,
     html: stemHtml,
     status: stemStatus,
-    statusClass: stemStatusClass
+    statusClass: stemStatusClass,
+    stageInfo: changshengStage
   });
 
-  // 2.1 地盘干
+  // 3. 地盘干 (行 3: 内在，约 20%，心性或材质；右侧彻底不显示状态框)
   if (diGan) {
     const diStemInfo = TIANGAN_DIPAN_INFO[diGan] || TIANGAN_MERGED_INFO[diGan] || { name: diGan, stemText: `${diGan}气数平顺`, wuXiang: '', renXiang: '' };
     let diStemContent = `${diStemInfo.name || diGan}：人象心性（${diStemInfo.renXiang || diStemInfo.stemText || ''}）；物象材质（${diStemInfo.wuXiang || diStemInfo.stemText || ''}）`;
@@ -2441,93 +2790,150 @@ export function getPalaceMergedAnalysis(pan, gong) {
     }
     const diStemHtml = `<div class="imagery-cell-box">${diStemHtmlLines}</div>`.trim();
 
-    const diStageMap = TIANGAN_CHANGSHENG_MAP[diGan] || {};
-    const diStageKey = `${diGan}-${gong}`;
-    const diKeyStageDesc = TIANGAN_KEY_STAGE_MEANINGS[diStageKey] || '';
-    const diStagesPrefix = palaceZhi.map(z => `落${z}为${diStageMap[z] || '平'}`).join('、');
-    let diStemStatus = diStagesPrefix ? `${diStagesPrefix}，${diKeyStageDesc || '气数平顺'}` : (diKeyStageDesc || '气数平顺');
-    let diStemStatusClass = 'ping';
-    if (diKeyStageDesc.includes('入墓') || diKeyStageDesc.includes('自刑') || diKeyStageDesc.includes('击刑')) {
-      diStemStatusClass = 'xiong';
-    } else if (diKeyStageDesc.includes('长生')) {
-      diStemStatusClass = 'wang';
-    }
     rows.push({
       tag: '地盘干',
       tagClass: 'digan',
       content: diStemContent,
       html: diStemHtml,
-      status: diStemStatus,
-      statusClass: diStemStatusClass
+      status: '', // 叶鸿生原则：地盘干不显示状态框
+      statusClass: ''
     });
   }
 
-  // 3. 星
+  // 4. 十干克应 (行 4: 紧跟在两干后面，默认显示主组合，寄干小标签切换；语气用中性条件句；典籍原文折叠在此行内)
+  const formatKeyingContent = (k, raw) => {
+    if (!raw) return k;
+    const body = raw.replace(/^为/, '').replace(/。$/, '');
+    return `${k}：${body.replace(/[“”]/g, '').replace(/：/, '，')}`;
+  };
+
+  // 条件句语气标签与中性配色
+  const getNeutralStatusObj = (k, v) => {
+    let rawStatus = '';
+    if (k && SHIGAN_STATUS_MAP[k]) {
+      rawStatus = SHIGAN_STATUS_MAP[k].status;
+    } else {
+      rawStatus = getShiganStatusSummary(v, k);
+    }
+
+    let statusText = '平顺·看门';
+    let statusClass = 'status-neutral';
+
+    if (rawStatus.includes('大吉') || rawStatus.includes('吉')) {
+      statusText = '门吉则吉';
+    } else if (rawStatus.includes('大凶') || rawStatus.includes('凶')) {
+      statusText = '偏凶·看门';
+    } else if (rawStatus.includes('利客')) {
+      statusText = '利客不利主';
+    } else if (rawStatus.includes('利主')) {
+      statusText = '利主不利客';
+    }
+
+    return { status: statusText, statusClass };
+  };
+
+  const shiganItems = [];
+  const addShiganItem = (k, isZhifu = false) => {
+    const rawVal = SHIGAN_PRACTICAL[k] || SHIGAN_KEYING[k] || '';
+    const classicText = SHIGAN_KEYING[k] ? SHIGAN_KEYING[k].replace(/^为/, '').replace(/[“”]/g, '').replace(/：/, '，').replace(/。$/, '') : '';
+    if (rawVal) {
+      const s = getNeutralStatusObj(k, rawVal);
+      shiganItems.push({
+        key: k,
+        name: isZhifu ? `${k}(值符同甲)` : k,
+        content: formatKeyingContent(k, rawVal),
+        classicText,
+        status: s.status,
+        statusClass: s.statusClass
+      });
+    }
+  };
+
+  if (tianGan && diGan) addShiganItem(`${tianGan}加${diGan}`);
+  if (jiGan && jiGan !== diGan && jiGan !== tianGan) addShiganItem(`${jiGan}加${diGan}`);
+  const isZhiFu = (spirit === '值符' || (pan && pan.shiGong === gong));
+  if (isZhiFu && tianGan !== '甲' && diGan) addShiganItem(`甲加${diGan}`, true);
+
+  const defaultKeying = shiganItems[0] || {
+    key: `${tianGan}加${diGan}`,
+    name: `${tianGan}加${diGan}`,
+    content: `${tianGan}加${diGan}：无特定克应`,
+    classicText: '',
+    status: '平顺·看门',
+    statusClass: 'status-neutral'
+  };
+
+  rows.push({
+    tag: '十干克应',
+    tagClass: 'keying',
+    content: defaultKeying.content,
+    fullContent: shiganItems.map(it => it.content).join('；'),
+    status: defaultKeying.status,
+    statusClass: defaultKeying.statusClass,
+    classicText: defaultKeying.classicText,
+    items: shiganItems
+  });
+
+  // 5. 九星 (行 5: 性格或形状；右侧分成地利和天时两个中性标签)
   let starClean = star ? (star.includes('天芮') ? '天芮' : star.replace(/星/g, '').trim()) : '';
   let starDesc = STAR_PRACTICAL[starClean] || (mem ? mem.starDesc : '');
   const starAnalysis = getStarWangshuaiAnalysis(starClean, gong, pan);
-  let starStatus = '平';
-  let starStatusClass = 'ping';
-  if (starAnalysis) {
-    const formulaPart = [starAnalysis.gongFormula, starAnalysis.monthFormula]
-      .filter(Boolean)
-      .map(f => f.replace(/为.*/, ''))
-      .join('、');
-    starStatus = formulaPart ? `${formulaPart}，${starAnalysis.summary}` : starAnalysis.summary;
-    if (starAnalysis.summary.includes('旺相')) starStatusClass = 'wang';
-    else if (starAnalysis.summary.includes('休囚') || starAnalysis.summary.includes('没有用处')) starStatusClass = 'xiong';
-  }
+  let starDili = starAnalysis && starAnalysis.gongRel ? starAnalysis.gongRel.state : '平';
+  let starTianshi = starAnalysis && starAnalysis.monthRel ? starAnalysis.monthRel.state : '平';
+  let starStatus = `地利${starDili} · 天时${starTianshi}`;
+
   rows.push({
     tag: '九星',
     tagClass: 'star',
     content: `${starClean}星：${starDesc}`,
     html: formatRenWuHtml(`${starClean}星`, starDesc),
     status: starStatus,
-    statusClass: starStatusClass
+    statusClass: 'status-neutral',
+    dili: starDili,
+    tianshi: starTianshi
   });
 
-  // 如果此宫临天芮星（转盘中五天禽寄天芮），在天芮星下面增加天禽星的判定
   if (starClean === '天芮' || (star && star.includes('天芮')) || (pan.tianpanStar && pan.tianpanStar[gong] && pan.tianpanStar[gong].includes('天芮'))) {
     const qinAnalysis = getStarWangshuaiAnalysis('天禽', gong, pan);
-    let qinStatus = '平';
-    let qinStatusClass = 'ping';
-    if (qinAnalysis) {
-      const formulaPart = [qinAnalysis.gongFormula, qinAnalysis.monthFormula]
-        .filter(Boolean)
-        .map(f => f.replace(/为.*/, ''))
-        .join('、');
-      qinStatus = formulaPart ? `${formulaPart}，${qinAnalysis.summary}` : qinAnalysis.summary;
-      if (qinAnalysis.summary.includes('旺相')) qinStatusClass = 'wang';
-      else if (qinAnalysis.summary.includes('休囚') || qinAnalysis.summary.includes('没有用处')) qinStatusClass = 'xiong';
-    }
+    let qinDili = qinAnalysis && qinAnalysis.gongRel ? qinAnalysis.gongRel.state : '平';
+    let qinTianshi = qinAnalysis && qinAnalysis.monthRel ? qinAnalysis.monthRel.state : '平';
     const qinDesc = STAR_PRACTICAL['天禽'] || '人物（中正忠厚／稳固包容）；事物（稳固中枢／调和包容）';
     rows.push({
       tag: '九星',
       tagClass: 'star',
       content: `天禽星：${qinDesc}`,
       html: formatRenWuHtml('天禽星', qinDesc),
-      status: qinStatus,
-      statusClass: qinStatusClass
+      status: `地利${qinDili} · 天时${qinTianshi}`,
+      statusClass: 'status-neutral',
+      dili: qinDili,
+      tianshi: qinTianshi
     });
   }
 
-  // 4. 门
+  // 6. 八门 (行 6: 情绪状态；只写门迫/受制/门生克，灰色弱化，不评吉凶)
   let doorDesc = DOOR_PRACTICAL[door] || (mem ? mem.doorDesc : '');
   const doorAnalysis = getDoorShengkeAnalysis(door, gong, pan);
-  let doorStatus = '平';
-  let doorStatusClass = 'ping';
+  let doorStatus = '平门';
+  let doorStatusClass = 'status-door-neutral';
   if (doorAnalysis) {
-    if (doorAnalysis.isFan) {
-      doorStatus = `门反吟，${doorAnalysis.relationFormula}：反复折腾，${doorAnalysis.relationMeaning}`;
-      doorStatusClass = 'xiong';
-    } else if (doorAnalysis.isFu) {
-      doorStatus = `门伏吟，${doorAnalysis.relationFormula}：事情停止不动、保持原态`;
-      doorStatusClass = 'xiong';
-    } else {
-      doorStatus = `${doorAnalysis.relationFormula}，${doorAnalysis.relationMeaning}`;
-      if (doorAnalysis.relationType === 'po' || doorAnalysis.relationType === 'zhi') doorStatusClass = 'xiong';
-      else if (doorAnalysis.relationType === 'sheng' || doorAnalysis.relationType === 'bi') doorStatusClass = 'wang';
+    if (doorAnalysis.relationType === 'po') {
+      doorStatus = '门迫';
+      doorStatusClass = 'status-door-po';
+    } else if (doorAnalysis.relationType === 'zhi') {
+      doorStatus = '受制';
+      doorStatusClass = 'status-door-zhi';
+    } else if (doorAnalysis.relationType === 'sheng') {
+      doorStatus = '宫生门';
+      doorStatusClass = 'status-door-neutral';
+    } else if (doorAnalysis.relationType === 'xie') {
+      doorStatus = '门生宫';
+      doorStatusClass = 'status-door-neutral';
+    } else if (doorAnalysis.relationType === 'bi') {
+      doorStatus = '门宫比和';
+      doorStatusClass = 'status-door-neutral';
     }
+    if (doorAnalysis.isFan) doorStatus += '·反吟';
+    if (doorAnalysis.isFu) doorStatus += '·伏吟';
   }
   rows.push({
     tag: '八门',
@@ -2538,7 +2944,7 @@ export function getPalaceMergedAnalysis(pan, gong) {
     statusClass: doorStatusClass
   });
 
-  // 5. 神
+  // 7. 八神 (行 7: 神态感觉；右侧不显示状态，八神不与任何符号论生克)
   let spiritDesc = SPIRIT_PRACTICAL[spirit] || '';
   rows.push({
     tag: '八神',
@@ -2546,242 +2952,43 @@ export function getPalaceMergedAnalysis(pan, gong) {
     content: `${spirit}：${spiritDesc}`,
     html: formatRenWuHtml(spirit, spiritDesc),
     status: '',
-    statusClass: 'ping'
+    statusClass: ''
   });
 
-  // 6. 十干克应 (支持多个组合，如主干加地盘干、寄干加地盘干、值符同甲加地盘干)
-  const formatKeyingContent = (k, raw) => {
-    if (!raw) return k;
-    const body = raw.replace(/^为/, '').replace(/。$/, '');
-    const cleaned = body.replace(/[“”]/g, '').replace(/：/, '，');
-    return `${k}：${cleaned}`;
-  };
+  // 精简模式专用数据 (每个符号一行，只取 2~3 个关键词，按用神属性过滤人/物/事)
+  const tgEssence = ESSENCE_KEYWORDS.tian[tianGan] ? (ESSENCE_KEYWORDS.tian[tianGan][activeNature === 'object' ? 'wu' : (activeNature === 'matter' ? 'shi' : 'ren')] || '') : '';
+  const dgEssence = ESSENCE_KEYWORDS.di[diGan] ? (ESSENCE_KEYWORDS.di[diGan][activeNature === 'object' ? 'wu' : (activeNature === 'matter' ? 'shi' : 'ren')] || '') : '';
+  const starEssence = ESSENCE_KEYWORDS.star[starClean] ? (ESSENCE_KEYWORDS.star[starClean][activeNature === 'object' ? 'wu' : (activeNature === 'matter' ? 'shi' : 'ren')] || '') : '';
+  const doorEssence = ESSENCE_KEYWORDS.door[door] ? (ESSENCE_KEYWORDS.door[door][activeNature === 'object' ? 'wu' : (activeNature === 'matter' ? 'shi' : 'ren')] || '') : '';
+  const spiritEssence = ESSENCE_KEYWORDS.spirit[spirit] ? (ESSENCE_KEYWORDS.spirit[spirit][activeNature === 'object' ? 'wu' : (activeNature === 'matter' ? 'shi' : 'ren')] || '') : '';
 
-  const getStatusObj = (k, v) => {
-    if (k && SHIGAN_STATUS_MAP[k]) {
-      return { status: SHIGAN_STATUS_MAP[k].status, statusClass: SHIGAN_STATUS_MAP[k].statusClass };
+  const compactRows = [
+    {
+      label: '宫位',
+      tag: '宫位',
+      desc: gongDescText,
+      status: '',
+      statusClass: ''
+    },
+    {
+      label: '十干克应',
+      tag: '十干克应',
+      desc: defaultKeying.content,
+      status: defaultKeying.status,
+      statusClass: defaultKeying.statusClass
     }
-    const status = getShiganStatusSummary(v, k);
-    let statusClass = 'ping';
-    if (status.includes('大吉')) statusClass = 'daji';
-    else if (status.includes('吉')) statusClass = 'ji';
-    else if (status.includes('大凶')) statusClass = 'daxiong';
-    else if (status.includes('凶')) statusClass = 'xiong';
-    return { status, statusClass };
-  };
-
-  const shiganItems = [];
-
-  // 1) 主干加地盘干
-  if (tianGan && diGan) {
-    const k1 = `${tianGan}加${diGan}`;
-    const v1 = SHIGAN_PRACTICAL[k1] || SHIGAN_KEYING[k1] || '';
-    if (v1) {
-      const s1 = getStatusObj(k1, v1);
-      shiganItems.push({
-        key: k1,
-        name: k1,
-        content: formatKeyingContent(k1, v1),
-        status: s1.status,
-        statusClass: s1.statusClass
-      });
-    }
-  }
-
-  // 2) 寄干加地盘干
-  if (jiGan && jiGan !== diGan && jiGan !== tianGan) {
-    const k2 = `${jiGan}加${diGan}`;
-    const v2 = SHIGAN_PRACTICAL[k2] || SHIGAN_KEYING[k2] || '';
-    if (v2) {
-      const s2 = getStatusObj(k2, v2);
-      shiganItems.push({
-        key: k2,
-        name: k2,
-        content: formatKeyingContent(k2, v2),
-        status: s2.status,
-        statusClass: s2.statusClass
-      });
-    }
-  }
-
-  // 3) 顶值符见甲克应提示
-  const isZhiFu = (spirit === '值符' || (pan && pan.shiGong === gong));
-  if (isZhiFu && tianGan !== '甲') {
-    const kj = `甲加${diGan}`;
-    const vj = SHIGAN_PRACTICAL[kj] || SHIGAN_KEYING[kj] || '';
-    if (vj) {
-      const sj = getStatusObj(kj, vj);
-      shiganItems.push({
-        key: kj,
-        name: kj,
-        content: `${formatKeyingContent(kj, vj)}（值符同甲）`,
-        status: sj.status,
-        statusClass: sj.statusClass
-      });
-    }
-  }
-
-  const defaultKeying = shiganItems[0] || {
-    key: `${tianGan}加${diGan}`,
-    name: `${tianGan}加${diGan}`,
-    content: `${tianGan}加${diGan}：无特定克应`,
-    status: '平',
-    statusClass: 'ping'
-  };
-
-  rows.push({
-    tag: '十干克应',
-    tagClass: 'keying',
-    content: defaultKeying.content,
-    fullContent: shiganItems.map(it => it.content).join('；'),
-    status: defaultKeying.status,
-    statusClass: defaultKeying.statusClass,
-    items: shiganItems
-  });
-
-  // 获取天干六种变化结构
-  const sc = getTianganSixChanges(pan, gong);
-
-  // 7. 遁甲 —— 铁律：没有状态可以不显示！
-  if (sc && sc.dunjia && sc.dunjia.hasDunjia && isZhiFu) {
-    rows.push({
-      tag: '遁甲',
-      tagClass: 'dunjia',
-      content: sc.dunjia.desc,
-      status: '值符同甲',
-      statusClass: 'special'
-    });
-  }
-
-  // 8. 相合 —— 铁律：没有状态可以不显示！
-  if (sc && sc.he && sc.he.isHe) {
-    const isTianActive = TIANGAN_HE_ACTIVE_STEMS.has(tianGan);
-    rows.push({
-      tag: '相合',
-      tagClass: 'he',
-      content: sc.he.desc,
-      status: `${sc.he.pair}（${isTianActive ? '主动牵挂' : '被动受合'}）`,
-      statusClass: 'ji'
-    });
-  }
-
-  // 9. 相刑 —— 铁律：没有状态可以不显示！
-  if (sc && sc.xing && sc.xing.isXing) {
-    rows.push({
-      tag: '相刑',
-      tagClass: 'xing',
-      content: sc.xing.desc,
-      status: sc.xing.type === 'zixing' ? '六仪自刑' : '六仪击刑',
-      statusClass: 'xiong'
-    });
-  }
-
-  // 10. 生旺死绝
-  const shengwangContent = stagesDetail ? `天盘${tianGan}落${gongName}：${stagesDetail}` : `天盘${tianGan}落${gongName}`;
-  rows.push({
-    tag: '生旺死绝',
-    tagClass: 'shengwang',
-    content: shengwangContent,
-    status: keyStageDesc || '气数平顺',
-    statusClass: stemStatusClass
-  });
-
-  // 12. 定应期 (有旬空才显示，无旬空直接隐藏该行，严格遵循叶鸿生标准)
-  const yingqi = getYingqiXunKongAnalysis(pan, gong);
-  if (yingqi && yingqi.isKong) {
-    rows.push({
-      tag: '定应期',
-      tagClass: 'yingqi',
-      content: yingqi.content,
-      status: yingqi.status,
-      statusClass: yingqi.statusClass
-    });
-  }
-
-  // 12.5 马星判定 (严格位于典籍印证前面一行)
-  // 准则:
-  // - 日干或者人物用神的宫位临马星，代表他正在动
-  // - 如果是事情“值符、时干”临马星，指这个事情正在进行中
-  // - 说的直白一点，只要用神宫位有马星，就代表他在动
-  const flag = (pan && pan.palaceFlags && pan.palaceFlags[gong]) ? pan.palaceFlags[gong] : {};
-  const hasMa = !!flag.hasMa;
-
-  if (hasMa) {
-    const isDayGan = (tianGan === (pan && pan.dayGan));
-    const isShiGan = (tianGan === (pan && pan.shiGan));
-    const currentYongShen = (pan && pan.selectedYongShen) ? pan.selectedYongShen : ((typeof state !== 'undefined' && state.selectedYongShen) ? state.selectedYongShen : ['值符']);
-    const curQuestion = (pan && pan.userQuestion !== undefined) ? pan.userQuestion : ((typeof state !== 'undefined' && state.userQuestion) ? state.userQuestion : '');
-    const curNature = (pan && pan.yongshenNature !== undefined) ? pan.yongshenNature : ((typeof state !== 'undefined' && state.yongshenNature) ? state.yongshenNature : 'auto');
-
-    const matchRes = checkPalaceMatchYongShen(pan, gong, currentYongShen);
-    const isYsMatch = matchRes && matchRes.matched;
-    const isPersonObj = isYongShenPersonOrObject(currentYongShen, curQuestion, curNature);
-
-    let maContent = '';
-    let maStatus = '正在动';
-    let maStatusClass = 'special';
-
-    if (isYsMatch) {
-      if (isDayGan || isPersonObj) {
-        maContent = `日干/人物用神【${matchRes.items.join('、')}】临马星：代表其人正在动、出行奔波、身处变动中，主动求变、行色匆匆`;
-        maStatus = '正在动';
-        maStatusClass = 'special';
-      } else if (isZhiFu || isShiGan) {
-        maContent = `值符/时干【${matchRes.items.join('、')}】临马星：代表所问事项正在快速进行中、事态推进、瞬息万变`;
-        maStatus = '进行中';
-        maStatusClass = 'special';
-      } else {
-        maContent = `用神【${matchRes.items.join('、')}】临马星：只要用神宫位有马星，即代表其人/事正在动，处于快速变动发展中`;
-        maStatus = '正在动';
-        maStatusClass = 'special';
-      }
-    } else if (isDayGan) {
-      maContent = `日干【${pan.dayGan}】临马星：代表求测人自身正在动、有出行走动、奔波或身处变动之中`;
-      maStatus = '正在动';
-      maStatusClass = 'ji';
-    } else if (isZhiFu || isShiGan) {
-      maContent = `值符/时干【${pan.shiGan}】临马星：代表所问事项正在快速进行中、事态推进疾速、瞬息万变`;
-      maStatus = '进行中';
-      maStatusClass = 'ji';
-    } else {
-      maContent = `宫临马星：主快速变动、出行走动、事态加速推进、蓄势待发之象`;
-      maStatus = '动态疾速';
-      maStatusClass = 'ping';
-    }
-
-    rows.push({
-      tag: '马星',
-      tagClass: 'maxing',
-      content: maContent,
-      status: maStatus,
-      statusClass: maStatusClass
-    });
-  }
-
-  // 13. 典籍印证列表
-  const classicEvidence = [];
-  const addClassic = (k) => {
-    if (SHIGAN_KEYING[k]) {
-      const c = SHIGAN_KEYING[k].replace(/^为/, '').replace(/[“”]/g, '').replace(/：/, '，').replace(/。$/, '');
-      classicEvidence.push(`${k}：${c}。`);
-    }
-  };
-  if (tianGan && diGan) {
-    addClassic(`${tianGan}加${diGan}`);
-  }
-  if (jiGan && jiGan !== diGan && jiGan !== tianGan) {
-    addClassic(`${jiGan}加${diGan}`);
-  }
-  if (isZhiFu && tianGan !== '甲' && diGan) {
-    addClassic(`甲加${diGan}`);
-  }
+  ];
 
   return {
     gong,
     gongName,
     title: `『${gongName}』`,
+    yongshenRole: yongshenRoleText,
+    statusBadges,
+    yuelingSimple,
+    palaceSummary,
     rows,
-    classicEvidence
+    compactRows
   };
 }
 
@@ -2835,7 +3042,7 @@ export function getPalaceAnalysis(pan, gong) {
     title: `『${gongName}』`,
     practicalList: getPalacePracticalAnalysis(pan, gong),
     sixChanges: getTianganSixChanges(pan, gong),
-    mergedAnalysis: getPalaceMergedAnalysis(pan, gong),
+    mergedAnalysis: getPalaceMergedAnalysis(pan, gong, pan ? pan.selectedYongShen : null, pan ? pan.userQuestion : '', pan ? pan.yongshenNature : 'auto'),
     shigan: shiganList
   };
 }

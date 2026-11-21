@@ -12,8 +12,22 @@ import {
   JIUGONG_MEMORY_DATA, getStarWangshuaiAnalysis,
   DOOR_ORIGINAL_PALACE, DOOR_ORIGINAL_ELEMENT,
   checkGlobalPatterns, getDoorShengkeAnalysis,
-  getYingqiXunKongAnalysis
+  getYingqiXunKongAnalysis, TIANGAN_CHANGSHENG_MAP,
+  KE_GAN_MAP, BEI_KE_GAN_MAP, BAGUA_GONG_MAP,
+  ESSENCE_KEYWORDS
 } from './qimen.js';
+import {
+  ENGINE_VERSION, NOTE_FIELDS, VERDICTS, newId, formatDateStr, todayStr,
+  loadRecords, saveRecords, getRecord, updateRecord, insertRecord, deleteRecord,
+  snapshotPan, panFingerprint, settingsOf, sameCastParams, rebuildFollowUps,
+  dueFollowUps, castsOnDay, lastCast, exportRecordsJson, importRecordsJson, statusLabel
+} from './records.js';
+import { buildPaipanSteps, cellLayerContent } from './trace.js';
+import { YUNCHOU_PURPOSES, analyzeYunchou, yunchouToText, palaceFactLine } from './yunchou.js';
+import {
+  YONGSHEN_PRESETS, DEFAULT_YONGSHEN_NATURE, getYongShenNature,
+  YONGSHEN_ROLE_MAP as PRESET_ROLE_MAP, DIRECTION_OPTIONS
+} from './presets.js';
 
 // 中文数字
 const GONG_NUM = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' };
@@ -42,21 +56,36 @@ const state = {
   customPillars: null,    // null (自动推算) 或 { year: '丙午', month: '戊戌', day: '丁卯', hour: '辛亥' }
   zishi: localStorage.getItem('qimen_zishi') || 'split',         // 'split' | 'merge'
   showDipan: localStorage.getItem('qimen_show_dipan') === '1',       // 切换地盘全息视图 (默认显示天盘)
+  selectedDipanGong: 0,                                               // 当前地盘聚焦选中的宫位 (0 表示未选中/收起连线)
+  dipanShowShengke: true,                                            // 地盘图例开关：生克连线 (默认开)
+  dipanShowDuigong: true,                                            // 地盘图例开关：对宫·马·冲 (默认开)
+  dipanShowYuanjin: true,                                            // 地盘图例开关：同侧近/跨太极线远 (默认开)
   kongLookOpposite: localStorage.getItem('qimen_kong_look_opposite') !== '0', // 旬空看对冲宫开关 (默认 true)
   maskWeakened: localStorage.getItem('qimen_mask_weakened') === '1', // 减弱非用神蒙版效果开关 (默认 false)
+  autoAnimOnYongshen: localStorage.getItem('qimen_auto_anim_on_yongshen') === '1', // 首次选取用神之后开始动态演盘 (默认 false)
+  hasAnimatedOnFirstYS: false, // 当前盘面是否已执行过首次选后动态演盘
+  lastPanKey: '',
   yongshenNature: localStorage.getItem('qimen_yongshen_nature') || 'auto', // 'auto' | 'person_object' | 'affair'
+  userGenderRole: localStorage.getItem('qimen_user_gender_role') || 'none', // 风水宫身份: 'none' | 'male'(乾) | 'female'(坤) | 'son'(震) | 'daughter'(巽)
+  selectedYongShenNatures: {}, // 逐个记录用神性质映射: { '用神名': 'person' | 'matter' | 'object' }
 
   // UI交互状态 (读取持久化设置)
   selectedGong: 2,        // 默认选中坤二宫
   isSimpleMode: localStorage.getItem('qimen_simple_mode') === '1',
   isGridPickingMode: false, // 盘面手动圈选用神模式 (点击九宫格直接圈选)
-  showKeyingDetails: localStorage.getItem('qimen_show_keying_details') === '1', // 默认隐藏天盘干、门状态、地盘干
+  showKeyingDetails: localStorage.getItem('qimen_show_keying_details') !== '0', // 设置总开关：默认展开详细 (值为 '0' 时才为精简)
   keyingOnlyYongShen: false, // 全盘克应速查弹窗中是否过滤只看当前用神
   imageryMode: localStorage.getItem('qimen_imagery_mode') || 'all', // 象意显示模式: 'all' (全部) | 'wu' (物象) | 'ren' (人象)
   currentPan: null,
 
   // 所问问题与选取用神
   userQuestion: localStorage.getItem('qimen_user_question') || '',
+  caseRemark: localStorage.getItem('qimen_case_remark') || '',
+  isPendingReveal: false, // 立即起盘防剧透状态 (先取时刻与用神，确认后再揭晓盘面)
+  // 当前锁定的起局记录 (立即起盘或读取案例后锁定；改动起局参数需确认并另开新盘)
+  activeRecordId: localStorage.getItem('qimen_active_record_id') || null,
+  lastReleasedRecordId: null, // 最近一次解除锁定的记录 (报数补起局时关联原局)
+  snapshotMismatchWarned: null,
   selectedYongShen: (() => {
     try {
       const raw = localStorage.getItem('qimen_selected_yongshen');
@@ -77,7 +106,8 @@ const state = {
   
   // 万年历当前浏览年月
   calViewYear: 2026,
-  calViewMonth: 10
+  calViewMonth: 10,
+  palaceModeOverrides: {} // 记录用户针对各宫位手动设定的模式: { [gong]: boolean } (true: 完整模式, false: 精简模式)
 };
 
 // 初始化入口
@@ -106,11 +136,28 @@ document.addEventListener('DOMContentLoaded', () => {
   initManualInputModal();
   initShiganSwitchDelegation();
   initSettingsModal();
+  initCaseNotesModal();
+  initStepsModal();
+  initYunchouModal();
+  initDipanLegendToggles();
+
+  window.addEventListener('resize', () => {
+    if (state.showDipan && state.currentPan) {
+      renderDipanRelations(state.currentPan, state.selectedDipanGong || 0);
+    }
+  });
+
+  // 刷新/重开时恢复正在进行的起局记录 (含待揭盘状态)，而不是回到默认参考盘
+  restoreActiveRecordOnLoad();
 
   // 首次运行排盘
   executePaipan();
+  renderDueBanner();
   window.__qimen_state = state;
   window.__qimen_renderNinePalaces = renderNinePalaces;
+  window.__qimen_executePaipan = executePaipan;
+  window.__qimen_boardAnimState = boardAnimState;
+  window.__qimen_playAnimStep = playAnimStep;
 });
 
 // 十干克应按键切换全局事件委托
@@ -138,6 +185,14 @@ function initShiganSwitchDelegation() {
           if (statusEl) {
             statusEl.textContent = item.status;
             statusEl.className = `merged-status-badge ${item.statusClass} shigan-live-status`;
+          }
+          const classicEl = row.querySelector('.shigan-classic-detail-text');
+          const classicWrap = row.querySelector('.shigan-classic-fold-wrap');
+          if (classicEl) {
+            classicEl.textContent = item.classicText || '';
+          }
+          if (classicWrap) {
+            classicWrap.style.display = item.classicText ? 'block' : 'none';
           }
         }
       } catch (err) {
@@ -513,6 +568,11 @@ function initDateTimeSelectors() {
     });
   }
 
+  const btnDirectCast = document.getElementById('btnDirectCastNow');
+  if (btnDirectCast) {
+    btnDirectCast.addEventListener('click', startImmediateCastFlow);
+  }
+
   // 快速四柱干支或公历时间输入识别起盘逻辑 (复制手动录入智能联动能力)
   function handleQuickTimeApply() {
     if (!iptQuick) return;
@@ -636,7 +696,15 @@ function syncControlsUI() {
     });
   }
 
-  // 3. 同步手动指定局数下拉框 (#selManualJu)
+  // 2.1 同步子时处理 Segmented Button
+  const segZishi = document.getElementById('segZishiGroup');
+  if (segZishi) {
+    segZishi.querySelectorAll('.m3-segment-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === state.zishi);
+    });
+  }
+
+  // 3. 同步手动指定局数下拉框 (#selManualJu) 及紧凑矩阵选择器
   const selManual = document.getElementById('selManualJu');
   if (selManual) {
     if (state.manualJu && state.manualJu.dun && state.manualJu.ju) {
@@ -645,6 +713,7 @@ function syncControlsUI() {
       selManual.value = 'auto';
     }
   }
+  syncManualJuUI();
 
   // 4. 同步时间选择框与日期
   syncDateTimeToPickers();
@@ -675,6 +744,19 @@ function syncDateTimeFromPickers() {
   const d = parseInt(document.getElementById('selPanDay').value);
   const h = parseInt(document.getElementById('selPanHour').value);
   const min = parseInt(document.getElementById('selPanMinute').value);
+
+  // 锁定中改时间：先确认是否另开新盘，拒绝则把输入框恢复成原局时间
+  const lockedRec = getActiveRecord();
+  if (lockedRec) {
+    const changed = (!isNaN(y) && y !== lockedRec.year) || (!isNaN(m) && m !== lockedRec.month) ||
+      (!isNaN(d) && d !== lockedRec.day) || (!isNaN(h) && h !== lockedRec.hour) ||
+      (!isNaN(min) && min !== lockedRec.minute);
+    if (changed && !confirmLeaveLock('修改起局时间')) {
+      syncDateTimeToPickers();
+      return;
+    }
+  }
+
   if (!isNaN(y)) state.year = y;
   if (!isNaN(m)) state.month = m;
   if (!isNaN(d)) state.day = d;
@@ -710,6 +792,7 @@ function initControls() {
 
   // 定局方式 Segmented Button
   setupSegmentedGroup('segDingjuGroup', val => {
+    if (!guardPrefChange('dingjuMethod', val, '切换定局方式')) return;
     state.dingjuMethod = val;
     localStorage.setItem('qimen_dingju_method', val);
     if (typeof syncSettingsModal === 'function') syncSettingsModal();
@@ -718,6 +801,7 @@ function initControls() {
 
   // 排盘方式 Segmented Button (排宫 / 飞宫)
   setupSegmentedGroup('segPaipanGroup', val => {
+    if (!guardPrefChange('paipanMethod', val, '切换排盘方式')) return;
     state.paipanMethod = val;
     localStorage.setItem('qimen_paipan_method', val);
     if (typeof syncSettingsModal === 'function') syncSettingsModal();
@@ -726,6 +810,7 @@ function initControls() {
 
   // 子时 Segmented Button (早晚分 / 进次日)
   setupSegmentedGroup('segZishiGroup', val => {
+    if (!guardPrefChange('zishi', val, '切换子时处理')) return;
     state.zishi = val;
     localStorage.setItem('qimen_zishi', val);
     if (typeof syncSettingsModal === 'function') syncSettingsModal();
@@ -738,6 +823,7 @@ function initControls() {
     chkDipan.checked = state.showDipan;
     chkDipan.addEventListener('change', e => {
       state.showDipan = e.target.checked;
+      state.selectedDipanGong = 0;
       localStorage.setItem('qimen_show_dipan', state.showDipan ? '1' : '0');
       updateBoardCardCenter(state.currentPan);
       if (typeof syncSettingsModal === 'function') syncSettingsModal();
@@ -749,19 +835,21 @@ function initControls() {
     });
   }
 
-  // 研判详情折叠开关 (默认隐藏天盘干、门状态、地盘干)
+  // 研判详情折叠开关 (设置总开关最高权限，支持手动切换当前宫并记录覆盖)
   const btnToggleKeying = document.getElementById('btnToggleKeyingDetail');
   if (btnToggleKeying) {
-    updateKeyingToggleBtn();
     btnToggleKeying.addEventListener('click', () => {
-      state.showKeyingDetails = !state.showKeyingDetails;
-      localStorage.setItem('qimen_show_keying_details', state.showKeyingDetails ? '1' : '0');
-      updateKeyingToggleBtn();
-      if (typeof syncSettingsModal === 'function') syncSettingsModal();
+      const g = state.selectedGong || 2;
+      const defaultFullMode = state.showKeyingDetails !== false;
+      const curFull = (state.palaceModeOverrides && state.palaceModeOverrides[g] !== undefined)
+        ? !!state.palaceModeOverrides[g]
+        : defaultFullMode;
+      if (!state.palaceModeOverrides) state.palaceModeOverrides = {};
+      state.palaceModeOverrides[g] = !curFull;
       if (state.currentPan) {
-        renderKeyingAnalysis(state.currentPan, state.selectedGong);
+        renderKeyingAnalysis(state.currentPan, g);
       }
-      showToast(state.showKeyingDetails ? '已展开显示详细信息' : '已恢复精简模式');
+      showToast(!curFull ? '已展开为完整读象模式' : '已切换为精简模式 (仅展示宫位与十干克应)');
     });
   }
 
@@ -781,14 +869,115 @@ function initControls() {
     if (selHour) state.hour = parseInt(selHour.value);
   }
 
+  // ---------------- 指定局数紧凑矩阵选择器 (Popover Matrix) ----------------
+  const NUM_TO_CHINESE = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' };
+
+  function formatJuText(val) {
+    if (!val || val === 'auto') return '自动起局';
+    const dun = val.substring(0, 1);
+    const num = parseInt(val.substring(1));
+    const ch = NUM_TO_CHINESE[num] || num;
+    return `${dun}${ch}局`;
+  }
+
+  function syncManualJuUI() {
+    const selManual = document.getElementById('selManualJu');
+    const txtTrigger = document.getElementById('txtManualJuTrigger');
+    const btnTrigger = document.getElementById('btnManualJuTrigger');
+    const btnAuto = document.getElementById('btnJuAuto');
+    if (!selManual || !txtTrigger) return;
+
+    const val = selManual.value || 'auto';
+    txtTrigger.textContent = formatJuText(val);
+
+    if (val === 'auto') {
+      if (btnTrigger) btnTrigger.classList.remove('is-manual');
+      if (btnAuto) btnAuto.classList.add('active');
+      document.querySelectorAll('.ju-num-chip').forEach(chip => chip.classList.remove('active'));
+    } else {
+      if (btnTrigger) btnTrigger.classList.add('is-manual');
+      if (btnAuto) btnAuto.classList.remove('active');
+      document.querySelectorAll('.ju-num-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.ju === val);
+      });
+    }
+  }
+
+  function initManualJuPicker() {
+    const wrap = document.getElementById('wrapManualJuPicker');
+    const btnTrigger = document.getElementById('btnManualJuTrigger');
+    const popover = document.getElementById('popoverManualJu');
+    const btnAuto = document.getElementById('btnJuAuto');
+    const selManual = document.getElementById('selManualJu');
+    if (!wrap || !btnTrigger || !selManual) return;
+
+    // 触发按钮展开/收起
+    btnTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = wrap.classList.toggle('open');
+      btnTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    // 点击浮层内部阻止冒泡，避免误关闭
+    if (popover) {
+      popover.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+
+    // 点击外部区域自动收起
+    document.addEventListener('click', (e) => {
+      if (!wrap.contains(e.target)) {
+        wrap.classList.remove('open');
+        btnTrigger.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // ESC 键收起
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && wrap.classList.contains('open')) {
+        wrap.classList.remove('open');
+        btnTrigger.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // 点击自动起局
+    if (btnAuto) {
+      btnAuto.addEventListener('click', () => {
+        selManual.value = 'auto';
+        selManual.dispatchEvent(new Event('change'));
+        wrap.classList.remove('open');
+        btnTrigger.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    // 点击局数微胶囊 (阳1~9, 阴1~9)
+    wrap.querySelectorAll('.ju-num-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const juVal = chip.dataset.ju;
+        if (juVal) {
+          selManual.value = juVal;
+          selManual.dispatchEvent(new Event('change'));
+          wrap.classList.remove('open');
+          btnTrigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+
+    // 首次同步一次
+    syncManualJuUI();
+  }
+
   // 辅助函数：指定局数改为自动起局
   function resetManualJu() {
     const sel = document.getElementById('selManualJu');
     if (sel) sel.value = 'auto';
     state.manualJu = null;
+    syncManualJuUI();
   }
 
-  // 1. 手动指定局数下拉框
+  // 1. 手动指定局数下拉框与矩阵组件初始化
+  initManualJuPicker();
   const selManual = document.getElementById('selManualJu');
   if (selManual) {
     selManual.addEventListener('change', () => {
@@ -804,6 +993,7 @@ function initControls() {
         resetBaoshi();
         resetBaoShu();
       }
+      syncManualJuUI();
       executePaipan();
     });
   }
@@ -880,7 +1070,12 @@ function initControls() {
 
   // 顶部与底部快捷按钮
   const btnSimple = document.getElementById('btnToggleSimple');
-  if (btnSimple) btnSimple.addEventListener('click', toggleSimpleMode);
+  if (btnSimple) {
+    btnSimple.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSimpleMode();
+    });
+  }
 
   const btnCopy = document.getElementById('btnCopyQimen');
   if (btnCopy) btnCopy.addEventListener('click', copyQimenToClipboard);
@@ -894,13 +1089,6 @@ function initControls() {
       e.stopPropagation();
       openKeyingModal();
     }, { passive: true });
-  }
-  const topToolbarGroup = document.querySelector('.top-bar-actions .toolbar-group');
-  if (topToolbarGroup) {
-    topToolbarGroup.addEventListener('click', (e) => {
-      if (e.target === btnTopKeying || (btnTopKeying && btnTopKeying.contains(e.target))) return;
-      openKeyingModal();
-    });
   }
   const btnBottomCopy = document.getElementById('btnBottomCopy');
   if (btnBottomCopy) btnBottomCopy.addEventListener('click', copyQimenToClipboard);
@@ -950,10 +1138,7 @@ function initControls() {
   }
 
   const btnNow = document.getElementById('btnToolbarNow');
-  if (btnNow) btnNow.addEventListener('click', setToNow);
-
-  const btnBottomSave = document.getElementById('btnBottomSave');
-  if (btnBottomSave) btnBottomSave.addEventListener('click', () => openModal('modalSaveCase'));
+  if (btnNow) btnNow.addEventListener('click', startImmediateCastFlow);
 
   // 象意人象与物象快速切换按键委托监听
   document.addEventListener('click', (e) => {
@@ -1084,18 +1269,12 @@ function initCalendar() {
       renderCalendar();
     });
   }
-  document.getElementById('btnCalNow').addEventListener('click', setToNow);
+  document.getElementById('btnCalNow').addEventListener('click', jumpCalendarToToday);
 
   // 移动端万年历底部快捷起盘与查看盘面
   const btnCastNow = document.getElementById('btnCalCastNow');
   if (btnCastNow) {
-    btnCastNow.addEventListener('click', () => {
-      setToNow();
-      if (typeof switchMobileTab === 'function') {
-        switchMobileTab('pan');
-      }
-      showToast('已按当前时间实时起盘！');
-    });
+    btnCastNow.addEventListener('click', startImmediateCastFlow);
   }
 
   const btnViewPan = document.getElementById('btnCalViewPan');
@@ -1196,6 +1375,11 @@ function initPalaceInteractions() {
   document.querySelectorAll('.palace-cell').forEach(cell => {
     const gong = parseInt(cell.dataset.gong);
     cell.addEventListener('click', (e) => {
+      // 若处于九宫盘面动态演盘期间，用户点击宫位则立即结束演盘并选中该宫
+      if (typeof boardAnimState !== 'undefined' && boardAnimState.running) {
+        stopBoardAnimation(true);
+      }
+
       // 若点击的是正宫角落开关按钮，不触发宫位选中
       if (e.target.closest('#btnCenterKongToggle') || e.target.closest('#btnCenterMaskToggle')) return;
 
@@ -1204,6 +1388,12 @@ function initPalaceInteractions() {
         e.stopPropagation();
         e.preventDefault();
         handleGridPickClick(e, gong);
+        return;
+      }
+
+      // 若处于地盘全息视图，宫位点击专用于聚焦该宫并展示对应动态关系层
+      if (state.showDipan) {
+        handleDipanPalaceClick(gong);
         return;
       }
 
@@ -1248,6 +1438,25 @@ function initPalaceInteractions() {
   });
 }
 
+// 地盘全息模式下的宫格点击交互 (选中宫位以同步下方克应研判，地盘看大象不进行变暗聚焦)
+function handleDipanPalaceClick(gong) {
+  state.selectedGong = gong;
+  state.selectedDipanGong = gong;
+
+  // 同步更新所有宫格的高亮选中样式
+  document.querySelectorAll('.palace-cell').forEach(c => {
+    const g = parseInt(c.dataset.gong);
+    c.classList.toggle('selected', g === gong);
+    c.classList.toggle('is-dipan-selected', g === gong);
+  });
+
+  // 同步更新下方克应研判卡片，并根据当前点击的宫位动态重绘天盘用神关系连线
+  if (state.currentPan) {
+    renderKeyingAnalysis(state.currentPan, gong);
+    renderDipanRelations(state.currentPan, gong);
+  }
+}
+
 function selectPalace(gong) {
   state.selectedGong = gong;
   document.querySelectorAll('.palace-cell').forEach(c => {
@@ -1260,8 +1469,22 @@ function selectPalace(gong) {
 
 // 7. 执行排盘并更新全界面
 function executePaipan() {
+  if (typeof boardAnimState !== 'undefined' && boardAnimState.running) {
+    stopBoardAnimation(false);
+  }
+
+  // 起局锁定兜底：任何入口改动了起局参数，都要先确认是否另开新盘
+  const lockedRec = getActiveRecord();
+  if (lockedRec && !sameCastParams(lockedRec, state)) {
+    if (confirmLeaveLock('改动起局参数')) {
+      // 已解除锁定，按新参数排盘
+    } else {
+      restoreLockedParams(lockedRec);
+    }
+  }
+
   try {
-    const pan = paipan({
+    let pan = paipan({
       year: state.year,
       month: state.month,
       day: state.day,
@@ -1276,19 +1499,85 @@ function executePaipan() {
       customPillars: state.customPillars
     });
 
+    // 锁定中的记录若有盘面快照，以存档原盘为准 (算法日后修正也不会悄悄换盘)
+    const rec = getActiveRecord();
+    if (rec && rec.panSnapshot) {
+      const fpRec = rec.panFingerprint || panFingerprint(rec.panSnapshot);
+      if (panFingerprint(pan) !== fpRec) {
+        pan = JSON.parse(JSON.stringify(rec.panSnapshot));
+        if (state.snapshotMismatchWarned !== rec.id) {
+          state.snapshotMismatchWarned = rec.id;
+          setTimeout(() => showToast('当前算法重算的盘与存档不同，已按起局时保存的原盘显示'), 600);
+        }
+      }
+    }
+
     pan.selectedYongShen = state.selectedYongShen;
     pan.userQuestion = state.userQuestion;
     pan.yongshenNature = state.yongshenNature;
+    pan.remark = state.caseRemark;
     state.currentPan = pan;
+
+    const curPillars = pan.pillars || {};
+    const panKey = `${curPillars.year || ''}-${curPillars.month || ''}-${curPillars.day || ''}-${curPillars.hour || ''}-${pan.paipanMethod}-${pan.dingjuMethod}-${pan.ju}`;
+    if (panKey !== state.lastPanKey) {
+      state.lastPanKey = panKey;
+      state.hasAnimatedOnFirstYS = false;
+    }
 
     renderHeaderInfo(pan);
     renderNinePalaces(pan);
-    renderKeyingAnalysis(pan, state.selectedGong);
     renderCalendarTerms(pan);
+
+    if (state.isPendingReveal) {
+      renderKeyingPendingHint();
+      applyPendingVisualMasks(true);
+      scrubPendingContent();
+    } else {
+      renderKeyingAnalysis(pan, state.selectedGong);
+      applyPendingVisualMasks(false);
+    }
+    renderLockBadge();
   } catch (err) {
     console.error('排盘执行异常:', err);
     showToast('排盘计算失败: ' + err.message);
   }
+}
+
+// 防剧透视觉遮罩控制
+function applyPendingVisualMasks(isPending) {
+  const grid = document.getElementById('nineGrid');
+  const overviewCard = document.querySelector('.info-overview-card');
+  const overlay = document.getElementById('boardPendingOverlay');
+  const timeEl = document.getElementById('txtPendingLockedTime');
+
+  if (isPending) {
+    if (grid) grid.classList.add('is-grid-masked');
+    if (overviewCard) overviewCard.classList.add('is-overview-masked');
+    if (overlay) overlay.style.display = 'flex';
+    if (timeEl) {
+      timeEl.textContent = `${state.year}年${String(state.month).padStart(2, '0')}月${String(state.day).padStart(2, '0')}日 ${String(state.hour).padStart(2, '0')}:${String(state.minute).padStart(2, '0')}`;
+    }
+  } else {
+    if (grid) grid.classList.remove('is-grid-masked');
+    if (overviewCard) overviewCard.classList.remove('is-overview-masked');
+    if (overlay) overlay.style.display = 'none';
+  }
+}
+
+// 待揭盘模式下克应研判提示
+function renderKeyingPendingHint() {
+  const content = document.getElementById('keyingContent');
+  if (!content) return;
+  content.innerHTML = `
+    <div class="keying-pending-mask-msg" style="padding: 48px 16px; text-align: center; color: var(--md-sys-color-outline); font-size: 13px;">
+      <div style="font-size: 32px; margin-bottom: 10px;">🔒</div>
+      <strong style="font-size: 14.5px; color: var(--md-sys-color-primary);">已锁定起局时刻 · 待选取用神揭盘</strong>
+      <div style="margin-top: 8px; font-size: 12.5px; color: var(--md-sys-color-outline); line-height: 1.6;">
+        当前时刻已锁定就绪。为防先窥盘面、后悔改占，<br>请先确定所问事项与用神，确认后将自动呈现宫位全盘研判。
+      </div>
+    </div>
+  `;
 }
 
 // 渲染头部信息区
@@ -1364,9 +1653,811 @@ function renderHeaderInfo(pan) {
   } else {
     if (itemWuBuYuRow) itemWuBuYuRow.style.display = 'none';
   }
+
+  // 全局大局与月令判定 (顶栏常驻，天盘与地盘双视图通用)
+  updateGlobalVerdictBanner(p);
 }
 
-// 渲染地盘全量基盘全息卡片 (对应地盘基盘教学图)
+// 全局大局与月令判定栏
+function updateGlobalVerdictBanner(p) {
+  const banner = document.getElementById('globalVerdictBanner');
+  const txtYueling = document.getElementById('verdictYuelingText');
+  const wrapBadges = document.getElementById('verdictBadgesWrap');
+  if (!banner || !txtYueling || !wrapBadges) return;
+
+  const monthZhi = p.pillars && p.pillars.month ? (p.pillars.month.length >= 2 ? p.pillars.month[1] : p.pillars.month[0]) : '戌';
+  const mElem = ZHI_ELEMENT_MAP[monthZhi] || '土';
+
+  const YUELING_PILLS = {
+    '木': [
+      { text: '木旺', cls: 'pill-wang' },
+      { text: '火相', cls: 'pill-xiang' },
+      { text: '水休', cls: 'pill-xiu' },
+      { text: '金囚', cls: 'pill-qiu' },
+      { text: '土死', cls: 'pill-si' }
+    ],
+    '火': [
+      { text: '火旺', cls: 'pill-wang' },
+      { text: '土相', cls: 'pill-xiang' },
+      { text: '木休', cls: 'pill-xiu' },
+      { text: '水囚', cls: 'pill-qiu' },
+      { text: '金死', cls: 'pill-si' }
+    ],
+    '土': [
+      { text: '土旺', cls: 'pill-wang' },
+      { text: '金相', cls: 'pill-xiang' },
+      { text: '火休', cls: 'pill-xiu' },
+      { text: '木囚', cls: 'pill-qiu' },
+      { text: '水死', cls: 'pill-si' }
+    ],
+    '金': [
+      { text: '金旺', cls: 'pill-wang' },
+      { text: '水相', cls: 'pill-xiang' },
+      { text: '土休', cls: 'pill-xiu' },
+      { text: '火囚', cls: 'pill-qiu' },
+      { text: '木死', cls: 'pill-si' }
+    ],
+    '水': [
+      { text: '水旺', cls: 'pill-wang' },
+      { text: '木相', cls: 'pill-xiang' },
+      { text: '金休', cls: 'pill-xiu' },
+      { text: '土囚', cls: 'pill-qiu' },
+      { text: '火死', cls: 'pill-si' }
+    ]
+  };
+
+  const pills = YUELING_PILLS[mElem] || YUELING_PILLS['土'];
+  const pillsHtml = `<div class="yueling-pills-row">${pills.map(x => `<span class="yueling-pill ${x.cls}">${x.text}</span>`).join('')}</div>`;
+
+  txtYueling.innerHTML = `<span class="yueling-main-title">月令【${monthZhi}月·${mElem}旺】</span>${pillsHtml}`;
+
+  // 反伏吟判定 (九星影响大，八门为人事反复)
+  const patterns = checkGlobalPatterns(p);
+  wrapBadges.innerHTML = '';
+
+  let hasHeavyBadge = false;
+
+  // 九星反吟与伏吟 (天时大局)
+  if (patterns.isStarFanyin) {
+    hasHeavyBadge = true;
+    const tag = document.createElement('span');
+    tag.className = 'verdict-tag verdict-tag-danger';
+    tag.textContent = '【九星反吟】大局剧变颠倒';
+    tag.title = '九星全盘反吟，天时气场颠倒反复，大势易有剧烈逆转';
+    wrapBadges.appendChild(tag);
+  } else if (patterns.isStarFuyin) {
+    hasHeavyBadge = true;
+    const tag = document.createElement('span');
+    tag.className = 'verdict-tag verdict-tag-warning';
+    tag.textContent = '【九星伏吟】大局停滞迟缓';
+    tag.title = '九星全盘伏吟，天时不至，大局难以推进';
+    wrapBadges.appendChild(tag);
+  }
+
+  // 八门反吟与伏吟 (人事情绪)
+  if (patterns.isMenFanyin) {
+    hasHeavyBadge = true;
+    const tag = document.createElement('span');
+    tag.className = 'verdict-tag verdict-tag-warning';
+    tag.textContent = '【八门反吟】人事反复多变';
+    tag.title = '八门全盘反吟，人事反复折腾，情绪状态起伏不定';
+    wrapBadges.appendChild(tag);
+  } else if (patterns.isMenFuyin) {
+    hasHeavyBadge = true;
+    const tag = document.createElement('span');
+    tag.className = 'verdict-tag verdict-tag-info';
+    tag.textContent = '【八门伏吟】人事闭塞难行';
+    tag.title = '八门全盘伏吟，人事受阻闭塞，宜守旧不宜进取';
+    wrapBadges.appendChild(tag);
+  }
+
+  // 特殊时辰大像
+  if (p.wuBuYu && p.wuBuYu.isWuBuYu) {
+    hasHeavyBadge = true;
+    const tag = document.createElement('span');
+    tag.className = 'verdict-tag verdict-tag-danger';
+    tag.textContent = '【五不遇时】人时不遇';
+    tag.title = p.wuBuYu.desc;
+    wrapBadges.appendChild(tag);
+  } else if (p.wuBuYu && p.wuBuYu.hasSpecial) {
+    hasHeavyBadge = true;
+    const tag = document.createElement('span');
+    tag.className = 'verdict-tag verdict-tag-warning';
+    tag.textContent = '【时干入墓】事态晦暗';
+    tag.title = p.wuBuYu.desc;
+    wrapBadges.appendChild(tag);
+  }
+
+  if (!hasHeavyBadge) {
+    const tag = document.createElement('span');
+    tag.className = 'verdict-tag verdict-tag-normal';
+    tag.textContent = '【局态】无特殊局';
+    wrapBadges.appendChild(tag);
+  }
+}
+
+// -------------------------------------------------------------
+// 地盘全息重构核心引擎 (旺衰热力图、用神角色、日干气场三位、地支缩角、九宫关系层)
+// -------------------------------------------------------------
+const ZHI_ELEMENT_MAP = {
+  '寅': '木', '卯': '木',
+  '巳': '火', '午': '火',
+  '申': '金', '酉': '金',
+  '亥': '水', '子': '水',
+  '辰': '土', '戌': '土', '丑': '土', '未': '土'
+};
+
+const GONG_ELEMENT_MAP = {
+  1: '水', 2: '土', 3: '木', 4: '木', 5: '土', 6: '金', 7: '金', 8: '土', 9: '火'
+};
+
+const YANG_SIDE_GONGS = [1, 8, 3, 4]; // 阳侧：坎艮震巽
+const YIN_SIDE_GONGS = [9, 2, 7, 6];  // 阴侧：离坤兑乾
+
+// 五行旺衰计算 (以月令为纲: 同我者旺, 我生者相, 生我者休, 克我者囚, 我克者死)
+function getPalaceGongshi(monthZhi, gongElem) {
+  const mElem = ZHI_ELEMENT_MAP[monthZhi] || '土';
+  if (gongElem === mElem) {
+    return { level: '旺', desc: '当令同气，最旺', tagClass: 'tag-wang', bigClass: 'gongshi-wang' };
+  }
+  const SHENG_MAP = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+  if (SHENG_MAP[mElem] === gongElem) {
+    return { level: '相', desc: '令生宫位，次旺有生气', tagClass: 'tag-xiang', bigClass: 'gongshi-xiang' };
+  }
+  if (SHENG_MAP[gongElem] === mElem) {
+    return { level: '休', desc: '宫生月令，退休退气', tagClass: 'tag-xiu', bigClass: 'gongshi-xiu' };
+  }
+  const KE_MAP = { '木': '土', '土': '水', '水': '火', '火': '金', '金': '木' };
+  if (KE_MAP[gongElem] === mElem) {
+    return { level: '囚', desc: '宫克月令，受困入囚', tagClass: 'tag-qiu', bigClass: 'gongshi-qiu' };
+  }
+  if (KE_MAP[mElem] === gongElem) {
+    return { level: '死', desc: '令克宫位，受克极衰死', tagClass: 'tag-si', bigClass: 'gongshi-si' };
+  }
+  return { level: '平', desc: '中和', tagClass: 'tag-xiu', bigClass: 'gongshi-xiu' };
+}
+
+// 获取日干在九宫中的长生、临官、帝旺三宫标记
+function getDayGanWangGongs(dayGan) {
+  const map = TIANGAN_CHANGSHENG_MAP[dayGan] || {};
+  const GONG_ZHIS = {
+    1: ['子'],
+    2: ['未', '申'],
+    3: ['卯'],
+    4: ['辰', '巳'],
+    6: ['戌', '亥'],
+    7: ['酉'],
+    8: ['丑', '寅'],
+    9: ['午']
+  };
+  const result = {};
+  for (let g = 1; g <= 9; g++) {
+    const zhis = GONG_ZHIS[g] || [];
+    for (const z of zhis) {
+      const stage = map[z];
+      if (stage === '长生' || stage === '临官' || stage === '帝旺') {
+        result[g] = stage;
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+const YONGSHEN_ROLE_MAP = {
+  '日干': '日干·求测人',
+  '时干': '时干·事态/结果',
+  '值符': '值符·大局/贵人',
+  '值使': '值使·执行/门面',
+  '年干': '年干·长辈/上级',
+  '月干': '月干·同辈/朋友',
+  '开门': '开门·工作/公司',
+  '生门': '生门·利润/效益',
+  '休门': '休门·贵人/休养',
+  '伤门': '伤门·讨债/车船',
+  '杜门': '杜门·保密/技术',
+  '景门': '景门·行情/文书',
+  '死门': '死门·执念/地产',
+  '惊门': '惊门·官讼/口舌',
+  '六合': '六合·合作/中介',
+  '玄武': '玄武·虚假/盗贼',
+  '白虎': '白虎·凶煞/压力',
+  '螣蛇': '螣蛇·变故/虚惊',
+  '九天': '九天·远行/高处',
+  '九地': '九地·长久/稳固',
+  '太阴': '太阴·暗谋/阴护',
+  '戊': '戊·资金/本金',
+  '天芮': '天芮·病灶/病源',
+  '马星': '马星·变动/出行'
+};
+
+function getPalaceYongShenRole(pan, gong, dayGan, hourGan, selectedYS) {
+  if (!pan || !gong) return '';
+  const roles = [];
+  const tg = pan.tianpanGan ? pan.tianpanGan[gong] : '';
+  const tj = pan.tianpanJigan ? pan.tianpanJigan[gong] : '';
+  const door = pan.tianpanDoor ? pan.tianpanDoor[gong] : '';
+  const star = pan.tianpanStar ? pan.tianpanStar[gong] : '';
+  const spirit = pan.tianpanSpirit ? pan.tianpanSpirit[gong] : '';
+  const flags = pan.palaceFlags ? pan.palaceFlags[gong] : {};
+  const yearGan = pan.pillars && pan.pillars.year ? pan.pillars.year[0] : '';
+  const monthGan = pan.pillars && pan.pillars.month ? pan.pillars.month[0] : '';
+
+  const selectedList = Array.isArray(selectedYS) ? selectedYS : [];
+  const selectedNames = selectedList.map(y => (typeof y === 'object' && y !== null) ? y.name : String(y)).filter(Boolean);
+
+  // 1. 日干求测人：必须在当前天盘明确选取了 '日干' 时才赋予！未选用神绝不强行展示日干标签
+  if (selectedNames.includes('日干') && (tg === dayGan || tj === dayGan)) {
+    roles.push('日干·求测人');
+  }
+
+  // 2. 其余用神：严格由天盘当前选用的用神 (selectedYS) 决定！未选中的严禁赋予与展示
+  if (selectedNames.includes('年干') && (tg === yearGan || tj === yearGan)) {
+    roles.push('年干·大领导');
+  }
+  if (selectedNames.includes('月干') && (tg === monthGan || tj === monthGan)) {
+    roles.push('月干·同级/同行');
+  }
+  if (selectedNames.includes('时干') && (tg === hourGan || tj === hourGan) && tg !== dayGan && tj !== dayGan) {
+    roles.push('时干·事态');
+  }
+  if (selectedNames.includes('值符') && spirit === '值符') {
+    roles.push('值符·大局');
+  }
+  if (door && (selectedNames.includes(door) || selectedNames.includes(door.replace('门', '')))) {
+    roles.push(YONGSHEN_ROLE_MAP[door] || `${door}·事`);
+  }
+  if (selectedNames.includes('戊') && (tg === '戊' || pan.dipan?.[gong] === '戊')) {
+    roles.push('戊·资金');
+  }
+  if (selectedNames.includes('六合') && spirit === '六合') {
+    roles.push('六合·合作');
+  }
+  if (selectedNames.includes('天芮') && (star && star.includes('天芮'))) {
+    roles.push('天芮·病灶');
+  }
+  if (selectedNames.includes('马星') && flags && flags.isMa) {
+    roles.push('马星·变动');
+  }
+
+  // 3. 其余显式勾选的用神项（如干支、神、星等）
+  selectedNames.forEach(ys => {
+    if (roles.length >= 2) return;
+    if (['日干', '时干', '年干', '月干', '值符', '戊', '六合', '天芮', '马星'].includes(ys)) return;
+    if (door && (ys === door || ys === door.replace('门', ''))) return;
+
+    if (spirit && ys === spirit && !roles.some(r => r.startsWith(spirit))) {
+      roles.push(YONGSHEN_ROLE_MAP[spirit] || ys);
+    } else if (star && star.includes(ys) && !roles.some(r => r.includes(ys))) {
+      roles.push(YONGSHEN_ROLE_MAP[ys] || ys);
+    } else if ((tg === ys || tj === ys) && !roles.some(r => r.startsWith(ys))) {
+      roles.push(YONGSHEN_ROLE_MAP[ys] || ys);
+    } else {
+      const match = checkPalaceMatchYongShen(pan, gong, [ys]);
+      if (match && match.matched && !roles.some(r => r.startsWith(ys))) {
+        roles.push(YONGSHEN_ROLE_MAP[ys] || ys);
+      }
+    }
+  });
+
+  return roles.length > 0 ? roles[0] : '';
+}
+
+function getPalaceDizhiHtml(info, pan, gong) {
+  const flags = pan.palaceFlags ? pan.palaceFlags[gong] : {};
+  const isKong = !!(flags && flags.isKong);
+  const isMa = !!(flags && flags.isMa);
+  const pillarZhis = [
+    pan.pillars?.year?.[1],
+    pan.pillars?.month?.[1],
+    pan.pillars?.day?.[1],
+    pan.pillars?.hour?.[1]
+  ].filter(Boolean);
+
+  const zhiItems = info.dizhi.map(z => {
+    const isPillar = pillarZhis.includes(z);
+    return `<span class="dipan-zhi-char ${isPillar ? 'is-pillar' : ''}">${z}</span>`;
+  }).join(' ');
+
+  let kongBadge = isKong ? `<span class="dipan-badge-kong" title="时柱旬空">○</span>` : '';
+  let maBadge = isMa ? `<span class="dipan-badge-ma" title="驿马星">马</span>` : '';
+
+  return `
+    <div class="dipan-zhi-small-wrap">
+      ${zhiItems}
+      ${kongBadge}
+      ${maBadge}
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// 地盘关系层重构：三大画法与星形生克外围绕线
+// ① 生克连线：以日干为中心画星形，沿宫卡边缘与缝隙走，隔一宫走九宫外圈弧线，绝不穿过宫位中心
+// ② 指向徽章 + 目标光环：人物旬空看对宫、马星去向、宫内暗冲、五行通关
+// ③ 宫自身状态：月令旺衰大字、旬空、击刑留在宫卡内部
+// -------------------------------------------------------------
+
+const GONG_POS = {
+  4: { r: 0, c: 0 },
+  9: { r: 0, c: 1 },
+  2: { r: 0, c: 2 },
+  3: { r: 1, c: 0 },
+  5: { r: 1, c: 1 },
+  7: { r: 1, c: 2 },
+  8: { r: 2, c: 0 },
+  1: { r: 2, c: 1 },
+  6: { r: 2, c: 2 }
+};
+
+const OPPOSITE_GONG_MAP = { 1: 9, 9: 1, 2: 8, 8: 2, 3: 7, 7: 3, 4: 6, 6: 4, 5: 2 };
+
+// 沿宫卡缝隙与九宫外围路由连线，绝不穿过任何宫位中心
+function calculateEdgeRoutePath(dayGong, targetGong, arrowDir, bounds) {
+  const b1 = bounds[dayGong];
+  const b2 = bounds[targetGong];
+  const p1 = GONG_POS[dayGong];
+  const p2 = GONG_POS[targetGong];
+  if (!b1 || !b2 || !p1 || !p2) return null;
+
+  // arrowDir: 'to_day' -> 对方指向日干 (from b2 to b1)
+  // arrowDir: 'to_target' -> 日干指向对方 (from b1 to b2)
+  // arrowDir: 'none' -> 同气双向
+  const isToDay = (arrowDir === 'to_day');
+
+  // 1. 同行隔一宫 (列差 2，走九宫上外圈或下外圈光滑弧线，彻底避开坎宫与中宫内部，绝不遮挡坎宫“死”字或任何宫位大字)
+  if (p1.r === p2.r && Math.abs(p1.c - p2.c) === 2) {
+    const isBottomRow = (p1.r === 2); // 艮 8 到 乾 6，中间是坎 1
+    const midGong = isBottomRow ? 1 : 9;
+    const bMid = bounds[midGong];
+    const midX = bMid ? bMid.cx : (b1.cx + b2.cx) / 2;
+
+    if (isBottomRow) {
+      // 走底边外圈光滑弧线 (艮 8 到 乾 6)
+      const ctrlY = (bMid ? bMid.bottom : Math.max(b1.bottom, b2.bottom)) + 16;
+      let sx = isToDay ? b2.cx : b1.cx;
+      let sy = isToDay ? b2.bottom : b1.bottom;
+      let ex = isToDay ? b1.cx : b2.cx;
+      let ey = isToDay ? b1.bottom : b2.bottom;
+      return {
+        d: `M ${sx} ${sy} Q ${midX} ${ctrlY} ${ex} ${ey}`,
+        lx: midX,
+        ly: ctrlY
+      };
+    } else {
+      // 走顶边外圈光滑弧线 (如巽 4 到 坤 2，中间是离 9)
+      const ctrlY = (bMid ? bMid.top : Math.min(b1.top, b2.top)) - 16;
+      let sx = isToDay ? b2.cx : b1.cx;
+      let sy = isToDay ? b2.top : b1.top;
+      let ex = isToDay ? b1.cx : b2.cx;
+      let ey = isToDay ? b1.top : b2.top;
+      return {
+        d: `M ${sx} ${sy} Q ${midX} ${ctrlY} ${ex} ${ey}`,
+        lx: midX,
+        ly: ctrlY
+      };
+    }
+  }
+
+  // 2. 同列隔一宫 (行差 2，走九宫左外圈或右外圈光滑弧线)
+  if (p1.c === p2.c && Math.abs(p1.r - p2.r) === 2) {
+    const isLeftCol = (p1.c === 0); // 艮 8 到 巽 4，中间是震 3
+    const midGong = isLeftCol ? 3 : 7;
+    const bMid = bounds[midGong];
+    const midY = bMid ? bMid.cy : (b1.cy + b2.cy) / 2;
+
+    if (isLeftCol) {
+      const ctrlX = (bMid ? bMid.left : Math.min(b1.left, b2.left)) - 16;
+      let sx = isToDay ? b2.left : b1.left;
+      let sy = isToDay ? b2.cy : b1.cy;
+      let ex = isToDay ? b1.left : b2.left;
+      let ey = isToDay ? b1.cy : b2.cy;
+      return {
+        d: `M ${sx} ${sy} Q ${ctrlX} ${midY} ${ex} ${ey}`,
+        lx: ctrlX,
+        ly: midY
+      };
+    } else {
+      const ctrlX = (bMid ? bMid.right : Math.max(b1.right, b2.right)) + 16;
+      let sx = isToDay ? b2.right : b1.right;
+      let sy = isToDay ? b2.cy : b1.cy;
+      let ex = isToDay ? b1.right : b2.right;
+      let ey = isToDay ? b1.cy : b2.cy;
+      return {
+        d: `M ${sx} ${sy} Q ${ctrlX} ${midY} ${ex} ${ey}`,
+        lx: ctrlX,
+        ly: midY
+      };
+    }
+  }
+
+  // 3. 其余所有情况 (相邻垂直、相邻水平、对角跨宫如艮 8 到坤 2 等)：统一改为直接连直线
+  const dx = b2.cx - b1.cx;
+  const dy = b2.cy - b1.cy;
+  const dist = Math.hypot(dx, dy) || 1;
+  const ux = dx / dist;
+  const uy = dy / dist;
+
+  let scale1, scale2;
+  if (dist < 190) {
+    // 宫位相邻近 (水平、垂直或对角相邻)：
+    // 若止于宫位边缘，间隙仅 4~8px，会导致 36px 徽章与箭头直接重合挤压。
+    // 因此起点/终点延伸至宫内（大字外圈半径 22px 处），保证充足线长与箭头出挑空间，绝不遮挡大字
+    scale1 = 22;
+    scale2 = 22;
+  } else {
+    // 跨宫远距离：止于宫卡边缘并为放大后的锐利箭头预留 5px 落位空间
+    const hw1 = b1.width / 2;
+    const hh1 = b1.height / 2;
+    scale1 = Math.max(0, Math.min(Math.abs(hw1 / (ux || 0.0001)), Math.abs(hh1 / (uy || 0.0001))) - 5);
+
+    const hw2 = b2.width / 2;
+    const hh2 = b2.height / 2;
+    scale2 = Math.max(0, Math.min(Math.abs(hw2 / (ux || 0.0001)), Math.abs(hh2 / (uy || 0.0001))) - 5);
+  }
+
+  const pStart = { x: b1.cx + ux * scale1, y: b1.cy + uy * scale1 };
+  const pEnd = { x: b2.cx - ux * scale2, y: b2.cy - uy * scale2 };
+
+  let sx = isToDay ? pEnd.x : pStart.x;
+  let sy = isToDay ? pEnd.y : pStart.y;
+  let ex = isToDay ? pStart.x : pEnd.x;
+  let ey = isToDay ? pStart.y : pEnd.y;
+
+  return {
+    d: `M ${sx} ${sy} L ${ex} ${ey}`,
+    lx: (b1.cx + b2.cx) / 2,
+    ly: (b1.cy + b2.cy) / 2
+  };
+}
+
+// 计算日干视角的五行生克关系
+const SHENG_MAP_CYCLE = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+const KE_MAP_CYCLE = { '木': '土', '土': '水', '水': '火', '火': '金', '金': '木' };
+
+function getShengkeRelation(dayElem, targetElem, isFar) {
+  let relType = '';
+  let label = '';
+  let color = '';
+  let arrowDir = ''; // 'to_day' | 'to_target' | 'none'
+  let badgeClass = '';
+  let roleDesc = '';
+
+  if (targetElem === dayElem) {
+    relType = 'tongqi';
+    label = isFar ? '同气·远' : '同气';
+    color = '#94a3b8';
+    arrowDir = 'none';
+    badgeClass = 'badge-tongqi';
+    roleDesc = isFar ? '比肩同气帮扶，隔着太极线，远' : '比肩同气帮扶，同在阳侧近，呼应直接';
+  } else if (SHENG_MAP_CYCLE[targetElem] === dayElem) {
+    // 对方生我 (得生)
+    relType = 'sheng';
+    label = isFar ? '得生·远' : '得生';
+    color = '#10b981';
+    arrowDir = 'to_day';
+    badgeClass = 'badge-sheng';
+    roleDesc = isFar ? '对方生我，源源供给，隔着太极线，需借力引渡' : '对方生我，得益得助，近在身旁，受生直接';
+  } else if (SHENG_MAP_CYCLE[dayElem] === targetElem) {
+    // 我生对方 (被泄)
+    relType = 'xie';
+    label = isFar ? '被泄·远' : '被泄';
+    color = '#f59e0b';
+    arrowDir = 'to_target';
+    badgeClass = 'badge-xie';
+    roleDesc = isFar ? '我在为这件事付出、被消耗。隔着太极线，远' : '我生对方，倾注精力被泄耗，近在身边，付出直接';
+  } else if (KE_MAP_CYCLE[targetElem] === dayElem) {
+    // 对方克我 (被克)
+    relType = 'ke';
+    label = isFar ? '被克·远' : '被克';
+    color = '#ef4444';
+    arrowDir = 'to_day';
+    badgeClass = 'badge-ke';
+    roleDesc = isFar ? '对方克我，受制受压，隔着太极线，压力渐近' : '对方克我，大局压着我。同在阳侧近，压力直接';
+  } else if (KE_MAP_CYCLE[dayElem] === targetElem) {
+    // 我克对方 (我克)
+    relType = 'woke';
+    label = isFar ? '我克·远' : '我克';
+    color = '#3b82f6';
+    arrowDir = 'to_target';
+    badgeClass = 'badge-woke';
+    roleDesc = isFar ? '我克掌控求取，隔着太极线，远水难救近火' : '我克掌控求取，同侧近，得心应手';
+  }
+
+  return { relType, label, color, arrowDir, badgeClass, roleDesc };
+}
+
+// 渲染九宫关系层 (三大画法)
+function renderDipanRelations(pan, focusGong = 0) {
+  const gridEl = document.getElementById('nineGrid');
+  const svgEl = document.getElementById('dipanRelationOverlay');
+  if (!gridEl) return;
+
+  // 清除所有宫格的光环、角标与悬浮胶囊
+  document.querySelectorAll('.palace-cell').forEach(c => {
+    c.classList.remove(
+      'has-target-halo-kong',
+      'has-target-halo-ma',
+      'has-target-halo-chong',
+      'has-target-halo-tongguan',
+      'is-dipan-dimmed'
+    );
+    c.querySelectorAll('.dipan-corner-badge, .dipan-target-pill').forEach(el => el.remove());
+  });
+
+  // 如果非地盘模式，隐藏相关元素并返回
+  if (!state.showDipan || !pan) {
+    if (svgEl) svgEl.innerHTML = '';
+    return;
+  }
+
+  if (!svgEl) return;
+
+  const width = gridEl.clientWidth || 360;
+  const height = gridEl.clientHeight || 360;
+  svgEl.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svgEl.innerHTML = '';
+
+  const gridRect = gridEl.getBoundingClientRect();
+  const bounds = {};
+  for (let g = 1; g <= 9; g++) {
+    const c = document.getElementById(`cellGong${g}`);
+    if (c) {
+      const r = c.getBoundingClientRect();
+      bounds[g] = {
+        left: r.left - gridRect.left,
+        top: r.top - gridRect.top,
+        right: r.right - gridRect.left,
+        bottom: r.bottom - gridRect.top,
+        width: r.width,
+        height: r.height,
+        cx: r.left - gridRect.left + r.width / 2,
+        cy: r.top - gridRect.top + r.height / 2
+      };
+    }
+  }
+
+  const defs = `
+    <defs>
+      <marker id="relArrGreen" markerUnits="userSpaceOnUse" viewBox="0 0 14 14" refX="7" refY="7" markerWidth="15" markerHeight="15" orient="auto">
+        <path d="M 1.5 1.5 L 13 7 L 1.5 12.5 L 4 7 z" fill="#10b981" />
+      </marker>
+      <marker id="relArrOrange" markerUnits="userSpaceOnUse" viewBox="0 0 14 14" refX="7" refY="7" markerWidth="15" markerHeight="15" orient="auto">
+        <path d="M 1.5 1.5 L 13 7 L 1.5 12.5 L 4 7 z" fill="#f59e0b" />
+      </marker>
+      <marker id="relArrRed" markerUnits="userSpaceOnUse" viewBox="0 0 14 14" refX="7" refY="7" markerWidth="15" markerHeight="15" orient="auto">
+        <path d="M 1.5 1.5 L 13 7 L 1.5 12.5 L 4 7 z" fill="#ef4444" />
+      </marker>
+      <marker id="relArrBlue" markerUnits="userSpaceOnUse" viewBox="0 0 14 14" refX="7" refY="7" markerWidth="15" markerHeight="15" orient="auto">
+        <path d="M 1.5 1.5 L 13 7 L 1.5 12.5 L 4 7 z" fill="#3b82f6" />
+      </marker>
+      <marker id="relArrGray" markerUnits="userSpaceOnUse" viewBox="0 0 14 14" refX="7" refY="7" markerWidth="15" markerHeight="15" orient="auto">
+        <path d="M 1.5 1.5 L 13 7 L 1.5 12.5 L 4 7 z" fill="#94a3b8" />
+      </marker>
+    </defs>
+  `;
+
+  const MARKER_ID_MAP = {
+    '#10b981': 'relArrGreen',
+    '#f59e0b': 'relArrOrange',
+    '#ef4444': 'relArrRed',
+    '#3b82f6': 'relArrBlue',
+    '#94a3b8': 'relArrGray'
+  };
+
+  const dayGan = pan.pillars?.day?.[0] || '';
+  const hourGan = pan.pillars?.hour?.[0] || '';
+  const selectedYS = Array.isArray(state.selectedYongShen) ? state.selectedYongShen : [];
+  const selectedNames = selectedYS.map(y => (typeof y === 'object' && y !== null) ? y.name : String(y)).filter(Boolean);
+
+  // 1. 收集当前天盘实际选取的全部用神落宫 (排除中五宫 5)
+  const yongShenPalaces = [];
+  const seenYsGongs = new Set();
+
+  for (let g = 1; g <= 9; g++) {
+    if (g === 5) continue;
+    const match = checkPalaceMatchYongShen(pan, g, selectedNames);
+    if (match && match.matched) {
+      const role = getPalaceYongShenRole(pan, g, dayGan, hourGan, selectedYS) || (match.items && match.items[0]) || '用神';
+      yongShenPalaces.push({
+        gong: g,
+        role,
+        element: GONG_ELEMENT_MAP[g]
+      });
+      seenYsGongs.add(g);
+    }
+  }
+
+  // 2. 动态中心宫位：由用户当前点击的宫位决定（不再固定日干）
+  let centerGong = focusGong || state.selectedDipanGong || state.selectedGong || 0;
+
+  // 若初始进入地盘未显式点击，且当前中心不是用神宫，若有用神落宫则默认以第一个用神宫为中心
+  if ((!centerGong || !seenYsGongs.has(centerGong)) && yongShenPalaces.length > 0 && !focusGong) {
+    centerGong = yongShenPalaces[0].gong;
+    state.selectedDipanGong = centerGong;
+    state.selectedGong = centerGong;
+    document.querySelectorAll('.palace-cell').forEach(c => {
+      const g = parseInt(c.dataset.gong);
+      c.classList.toggle('selected', g === centerGong);
+      c.classList.toggle('is-dipan-selected', g === centerGong);
+    });
+  }
+
+  // 用户明确指令：如果天盘没有选取这个宫位作为用神，不展示关系！根据用神动态展示
+  const isCenterInYongShen = seenYsGongs.has(centerGong);
+  if (!isCenterInYongShen) {
+    svgEl.innerHTML = '';
+    return;
+  }
+
+  const centerItem = yongShenPalaces.find(y => y.gong === centerGong);
+  const centerElem = GONG_ELEMENT_MAP[centerGong];
+  const targets = yongShenPalaces.filter(y => y.gong !== centerGong);
+
+  const summaryRelations = [];
+
+  // -----------------------------------------------------------
+  // 画法 ①：以当前点击的用神宫位为中心，展示与天盘选取的其他用神之间的五行生克连线
+  // -----------------------------------------------------------
+  if (state.dipanShowShengke !== false && centerGong && bounds[centerGong]) {
+    targets.forEach(tg => {
+      const tgElem = GONG_ELEMENT_MAP[tg.gong];
+      if (!tgElem || !bounds[tg.gong]) return;
+
+      const isFar = (YANG_SIDE_GONGS.includes(centerGong) !== YANG_SIDE_GONGS.includes(tg.gong));
+      const rel = getShengkeRelation(centerElem, tgElem, state.dipanShowYuanjin ? isFar : false);
+
+      const route = calculateEdgeRoutePath(centerGong, tg.gong, rel.arrowDir, bounds);
+      if (!route) return;
+
+      const pInfoCenter = DIPAN_PALACE_INFO[centerGong];
+      const pInfoTg = DIPAN_PALACE_INFO[tg.gong];
+      const centerRole = centerItem.role ? centerItem.role.split('·')[0] : pInfoCenter.name;
+      const tgRole = tg.role ? tg.role.split('·')[0] : pInfoTg.name;
+
+      let title = '';
+      if (rel.arrowDir === 'to_day') {
+        title = `${tgRole}（${pInfoTg.name}·${tgElem}）→ ${centerRole}（${pInfoCenter.name}·${centerElem}）`;
+      } else if (rel.arrowDir === 'to_target') {
+        title = `${centerRole}（${pInfoCenter.name}·${centerElem}）→ ${tgRole}（${pInfoTg.name}·${tgElem}）`;
+      } else {
+        title = `${centerRole}（${pInfoCenter.name}·${centerElem}）↔ ${tgRole}（${pInfoTg.name}·${tgElem}）`;
+      }
+
+      const markerId = (rel.arrowDir !== 'none') ? MARKER_ID_MAP[rel.color] : null;
+      summaryRelations.push({
+        id: `rel-sk-${centerGong}-${tg.gong}`,
+        type: 'shengke',
+        gongs: [centerGong, tg.gong],
+        title,
+        badgeText: rel.label,
+        badgeClass: rel.badgeClass,
+        desc: rel.roleDesc,
+        svgPath: route.d,
+        color: rel.color,
+        strokeWidth: isFar && state.dipanShowYuanjin ? 1.8 : 3.2,
+        markerId,
+        lx: route.lx,
+        ly: route.ly,
+        labelText: rel.label
+      });
+    });
+  }
+
+  // -----------------------------------------------------------
+  // 画法 ②：指向徽章 + 目标光环 (旬空看对宫、马星去向、宫内暗冲)
+  // -----------------------------------------------------------
+  if (state.dipanShowDuigong !== false) {
+    // 1. 旬空处理 (当前点击的用神宫落空时，在对宫套上光环)
+    for (let g = 1; g <= 9; g++) {
+      if (pan.palaceFlags?.[g]?.isKong) {
+        if (g === centerGong) {
+          const opp = OPPOSITE_GONG_MAP[g];
+          const oppCell = document.getElementById(`cellGong${opp}`);
+          if (oppCell) {
+            oppCell.classList.add('has-target-halo-kong');
+          }
+        }
+      }
+    }
+
+    // 2. 马星去向
+    for (let g = 1; g <= 9; g++) {
+      if (pan.palaceFlags?.[g]?.isMa) {
+        const opp = OPPOSITE_GONG_MAP[g];
+        const pInfo = DIPAN_PALACE_INFO[g];
+        const oppInfo = DIPAN_PALACE_INFO[opp];
+        const cell = document.getElementById(`cellGong${g}`);
+        const oppCell = document.getElementById(`cellGong${opp}`);
+
+        if (oppCell && oppInfo) {
+          oppCell.classList.add('has-target-halo-ma');
+          const pill = document.createElement('span');
+          pill.className = 'dipan-target-pill pill-ma-target';
+          pill.textContent = '马星所指';
+          pill.title = `马星动态直指${oppInfo.name}，主动应变之方`;
+          oppCell.appendChild(pill);
+
+          summaryRelations.push({
+            id: `rel-ma-${g}`,
+            type: 'ma',
+            gongs: [g, opp],
+            title: `马星在${pInfo.name} → 奔赴${oppInfo.name}`,
+            badgeText: '马星所指',
+            badgeClass: 'badge-xie',
+            desc: `气场变动与奔波去向直指${oppInfo.name}，主动应变之方`
+          });
+        }
+      }
+    }
+  }
+
+  // -----------------------------------------------------------
+  // 绘制 SVG 连线与标签 (地盘主要用来看大象，全量清晰展示，不搞局部聚焦变暗)
+  // -----------------------------------------------------------
+  let pathsHtml = '';
+  summaryRelations.forEach(r => {
+    if (!r.svgPath) return;
+    const markerAttr = r.markerId ? `marker-end="url(#${r.markerId})"` : '';
+    const labelW = (r.labelText || '').length >= 4 ? 48 : 36;
+
+    pathsHtml += `
+      <g class="dipan-rel-path-group" data-rel-id="${r.id}" opacity="1">
+        <path d="${r.svgPath}" fill="none" stroke="${r.color}" stroke-width="${r.strokeWidth}" ${markerAttr} />
+        <g class="dipan-rel-label" transform="translate(${r.lx}, ${r.ly})">
+          <rect x="-${labelW / 2}" y="-9" width="${labelW}" height="18" rx="9" fill="${r.color}" opacity="1" />
+          <text x="0" y="3.5" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">${r.labelText}</text>
+        </g>
+      </g>
+    `;
+  });
+  svgEl.innerHTML = defs + pathsHtml;
+
+  // 保证所有宫格不被变暗，地盘保持大象全景
+  document.querySelectorAll('.palace-cell').forEach(c => c.classList.remove('is-dipan-dimmed'));
+}
+
+// 初始化地盘图例开关事件绑定
+function initDipanLegendToggles() {
+  const btnShengke = document.getElementById('btnToggleRelShengke');
+  const btnDuigong = document.getElementById('btnToggleRelDuigong');
+  const btnYuanjin = document.getElementById('btnToggleRelYuanjin');
+
+  if (btnShengke) {
+    btnShengke.classList.toggle('active', !!state.dipanShowShengke);
+    btnShengke.addEventListener('click', () => {
+      state.dipanShowShengke = !state.dipanShowShengke;
+      btnShengke.classList.toggle('active', state.dipanShowShengke);
+      if (state.currentPan && state.showDipan) {
+        renderDipanRelations(state.currentPan, state.selectedDipanGong || 0);
+      }
+    });
+  }
+
+  if (btnDuigong) {
+    btnDuigong.classList.toggle('active', !!state.dipanShowDuigong);
+    btnDuigong.addEventListener('click', () => {
+      state.dipanShowDuigong = !state.dipanShowDuigong;
+      btnDuigong.classList.toggle('active', state.dipanShowDuigong);
+      if (state.currentPan && state.showDipan) {
+        renderDipanRelations(state.currentPan, state.selectedDipanGong || 0);
+      }
+    });
+  }
+
+  if (btnYuanjin) {
+    btnYuanjin.classList.toggle('active', !!state.dipanShowYuanjin);
+    btnYuanjin.addEventListener('click', () => {
+      state.dipanShowYuanjin = !state.dipanShowYuanjin;
+      btnYuanjin.classList.toggle('active', state.dipanShowYuanjin);
+      if (state.currentPan && state.showDipan) {
+        renderDipanRelations(state.currentPan, state.selectedDipanGong || 0);
+      }
+    });
+  }
+}
+
+// 渲染重构后的地盘全息卡片 (对应新布局：旺衰热力图、用神角色、日干气场、地支缩角)
 function renderDipanPalaces(pan, gongs) {
   const gridEl = document.getElementById('nineGrid');
   if (gridEl) {
@@ -1374,22 +2465,42 @@ function renderDipanPalaces(pan, gongs) {
     gridEl.classList.add('is-dipan-mode');
   }
 
+  const monthZhi = pan.pillars && pan.pillars.month ? (pan.pillars.month.length >= 2 ? pan.pillars.month[1] : pan.pillars.month[0]) : '戌';
+  const dayGan = pan.pillars && pan.pillars.day ? pan.pillars.day[0] : '';
+  const hourGan = pan.pillars && pan.pillars.hour ? pan.pillars.hour[0] : '';
+  const selectedYS = Array.isArray(state.selectedYongShen) ? state.selectedYongShen : [];
+  const dayWangGongs = getDayGanWangGongs(dayGan);
+
   gongs.forEach(g => {
     const cell = document.getElementById(`cellGong${g}`);
     if (!cell) return;
-    cell.classList.remove('is-yongshen', 'is-yongshen-zhifu', 'is-yongshen-opposite-kong', 'is-palace-dimmed');
+    cell.classList.remove('is-yongshen', 'is-yongshen-zhifu', 'is-yongshen-opposite-kong', 'is-palace-dimmed', 'is-yang-side', 'is-yin-side', 'is-center-gong');
     cell.classList.add('is-dipan-cell');
+    cell.classList.toggle('is-dipan-selected', g === (state.selectedDipanGong || 0));
     cell.removeAttribute('title');
+
+    // 阴阳侧底色标记 (太极线远近)
+    if (YANG_SIDE_GONGS.includes(g)) {
+      cell.classList.add('is-yang-side');
+    } else if (YIN_SIDE_GONGS.includes(g)) {
+      cell.classList.add('is-yin-side');
+    } else {
+      cell.classList.add('is-center-gong');
+    }
+
     const info = DIPAN_PALACE_INFO[g];
     const dg = pan.dipan[g] || '';
+    const gongElem = info.element || '土';
+    const gongshi = getPalaceGongshi(monthZhi, gongElem);
 
+    // 1. 中五宫特殊处理
     if (g === 5) {
-      // 中五宫: 5, 中, 皇极无卦 (地盘模式下不显示旬空开关)
       cell.innerHTML = `
         <div class="dipan-cell-content gong-5">
           <div class="dipan-row-top">
             <div class="dipan-num-wx">
               <span class="dipan-num">5</span>
+              <span class="dipan-wx">土</span>
             </div>
             <div class="dipan-top-right">
               <span class="dipan-cur-stem-tag" title="本局地盘奇仪: ${dg || '戊'}">${dg || '戊'}</span>
@@ -1398,35 +2509,39 @@ function renderDipanPalaces(pan, gongs) {
           </div>
           <div class="dipan-row-mid">
             <div class="dipan-center-box">
-              <span class="dipan-center-title">中宫</span>
-              <span class="dipan-center-sub">皇极 · 戊己土</span>
+              <span class="dipan-gongshi-big ${gongshi.bigClass}">${gongshi.level}</span>
+              <span class="dipan-center-sub">中宫 · 皇极寄坤</span>
             </div>
           </div>
           <div class="dipan-row-bot">
-            <span class="dipan-desc" style="color: var(--md-sys-color-outline);">皇极无卦 · 寄坤二</span>
+            <div class="dipan-bot-left">
+              <span class="dipan-desc" style="color: var(--md-sys-color-outline);">皇极无卦 · 寄坤二</span>
+            </div>
+            <div class="dipan-bot-right">
+              <span class="dipan-zhi-small-wrap"><span class="dipan-zhi-char">戊己</span></span>
+            </div>
           </div>
         </div>
       `;
       return;
     }
 
-    // 地支排列
-    let dizhiHtml = '';
-    if (info.dizhi.length === 1) {
-      dizhiHtml = `<span class="dipan-zhi-single">${info.dizhi[0]}</span>`;
-    } else if (info.dizhi.length === 2) {
-      dizhiHtml = `
-        <div class="dipan-zhi-double">
-          <span class="zhi-first">${info.dizhi[0]}</span>
-          <span class="zhi-second">${info.dizhi[1]}</span>
-        </div>
-      `;
-    }
+    // 2. 用神角色标签（没有就不显示）
+    const yongShenRole = getPalaceYongShenRole(pan, g, dayGan, hourGan, selectedYS);
+    const roleHtml = yongShenRole ? `<div class="dipan-yongshen-role ${yongShenRole.includes('值符') ? 'is-zhifu' : ''}" title="${yongShenRole}">［${escapeHtml(yongShenRole)}］</div>` : '';
 
+    // 3. 日干气场标记 (只在长生、临官、帝旺三宫出现)
+    const dayStage = dayWangGongs[g];
+    const energyHtml = dayStage ? `<div class="dipan-daygan-energy" title="日干【${dayGan}】之${dayStage}气场"><span class="energy-icon">◎</span>${dayStage}</div>` : '';
+
+    // 4. 地盘寄干 (坤二宫寄干)
     let jiganTag = '';
     if (g === 2 && pan.dipan[5]) {
       jiganTag = `<span class="dipan-jigan-tag" title="中五寄干: ${pan.dipan[5]}">${pan.dipan[5]}</span>`;
     }
+
+    // 5. 地支缩角 HTML (挂空、马、四柱标记)
+    const dizhiCornerHtml = getPalaceDizhiHtml(info, pan, g);
 
     cell.innerHTML = `
       <div class="dipan-cell-content">
@@ -1441,15 +2556,29 @@ function renderDipanPalaces(pan, gongs) {
             <span class="dipan-dir-tag">${info.direction}</span>
           </div>
         </div>
+
         <div class="dipan-row-mid">
-          ${dizhiHtml}
+          ${roleHtml}
+          <div class="dipan-gongshi-big ${gongshi.bigClass}">${gongshi.level}</div>
+          ${energyHtml}
         </div>
+
         <div class="dipan-row-bot">
-          <span class="dipan-trigram">${info.trigram}</span>
-          <span class="dipan-desc">${info.trigramDesc}</span>
+          <div class="dipan-bot-left">
+            <span class="dipan-trigram">${info.trigram}</span>
+            <span class="dipan-desc">${info.trigramDesc}</span>
+          </div>
+          <div class="dipan-bot-right">
+            ${dizhiCornerHtml}
+          </div>
         </div>
       </div>
     `;
+  });
+
+  // 绘制九宫之上的关系层连线 (生克连线、空亡看对宫、马星去向、暗冲) - 仅在点击对应宫格时才绘制
+  requestAnimationFrame(() => {
+    renderDipanRelations(pan, state.selectedDipanGong || 0);
   });
 }
 
@@ -1462,6 +2591,13 @@ function renderNinePalaces(pan) {
     renderDipanPalaces(pan, gongs);
     return;
   }
+
+  // 切换为天盘时，清空地盘关系层 SVG 覆盖层与聚焦状态
+  state.selectedDipanGong = 0;
+  renderDipanRelations(pan, 0);
+  const relSvg = document.getElementById('dipanRelationOverlay');
+  if (relSvg) relSvg.innerHTML = '';
+  document.querySelectorAll('.palace-cell').forEach(c => c.classList.remove('is-dipan-selected'));
 
   // 预先计算所有宫位的用神匹配与旬空状态 (人/物逢空看对冲宫，事逢空不看对面)
   const matchResByGong = {};
@@ -1573,12 +2709,26 @@ function renderNinePalaces(pan) {
     );
     const isMaPicked = state.selectedYongShen && state.selectedYongShen.includes('马星');
 
+    // 天盘出现马星和旬空重叠时，把马星放到旬空的右边
+    const hasBothKongAndMa = !!(flag.hasMa && flag.isKong);
+    let maInSpiritBoxHtml = '';
+    let maHtml = '';
+
+    if (flag.hasMa) {
+      const maSpan = `<span class="badge-ma ${isMaPicked ? 'is-picked-symbol' : ''}" title="驿马星（主动、出行、速变）">马</span>`;
+      if (hasBothKongAndMa) {
+        maInSpiritBoxHtml = maSpan;
+      } else {
+        maHtml = `<div class="palace-ma-wrap">${maSpan}</div>`;
+      }
+    }
+
     const spiritHtml = `
       <div class="cell-row-top">
         <div class="spirit-box">
           <span class="${spiritClass}" title="${spiritTip}">${spirit}</span>
           ${flag.isKong ? `<span class="badge-kong ${isKongPicked ? 'is-picked-symbol' : ''}">○</span>` : ''}
-          ${flag.hasMa ? `<span class="badge-ma ${isMaPicked ? 'is-picked-symbol' : ''}">马</span>` : ''}
+          ${maInSpiritBoxHtml}
         </div>
       </div>
     `;
@@ -1669,7 +2819,7 @@ function renderNinePalaces(pan) {
       </div>
     `;
 
-    cell.innerHTML = spiritHtml + starHtml + doorHtml;
+    cell.innerHTML = spiritHtml + starHtml + doorHtml + maHtml;
 
     // 清除原有状态类
     cell.classList.remove('is-yongshen', 'is-yongshen-zhifu', 'is-yongshen-opposite-kong', 'is-palace-dimmed', 'is-dipan-cell', 'has-lucky-3', 'has-lucky-2', 'has-lucky-1');
@@ -1736,18 +2886,25 @@ function renderNinePalaces(pan) {
 }
 
 // 同步克应研判折叠按钮文案与状态
-function updateKeyingToggleBtn() {
+function updateKeyingToggleBtn(isFullMode) {
+  if (isFullMode === undefined) {
+    const g = state.selectedGong || 2;
+    const defaultFullMode = state.showKeyingDetails !== false;
+    isFullMode = (state.palaceModeOverrides && state.palaceModeOverrides[g] !== undefined)
+      ? !!state.palaceModeOverrides[g]
+      : defaultFullMode;
+  }
   const btn = document.getElementById('btnToggleKeyingDetail');
   const txt = document.getElementById('txtToggleKeyingDetail');
   if (!btn || !txt) return;
 
-  if (state.showKeyingDetails) {
+  if (isFullMode) {
     btn.classList.add('is-active');
-    btn.title = '点击收起并隐藏天盘干、门状态、地盘干';
+    btn.title = '点击收起为精简模式 (仅展示宫位与十干克应)';
     txt.textContent = '收起精简';
   } else {
     btn.classList.remove('is-active');
-    btn.title = '点击展开显示天盘干、门状态、地盘干';
+    btn.title = '点击展开为完整读象模式';
     txt.textContent = '展开详细';
   }
 }
@@ -1871,98 +3028,154 @@ function renderKeyingAnalysis(pan, gong) {
     return;
   }
 
-  document.getElementById('keyingTitle').textContent = `${analysis.title} 克应研判`;
-  updateKeyingToggleBtn();
-
   // 排宫法(转盘)中五宫寄坤二，无独立门星克应，明确显示“无”
   if (gong === 5 && pan.paipanMethod === 'zhuan') {
-    contentDiv.innerHTML = '<div style="color: var(--md-sys-color-outline); padding: 8px 0; font-size: 14px; font-weight: 500;">无</div>';
+    document.getElementById('keyingTitle').textContent = `『中宫』克应研判`;
+    updateKeyingToggleBtn(false);
+    contentDiv.innerHTML = '<div style="color: var(--md-sys-color-outline); padding: 12px 0; font-size: 14px; font-weight: 500;">排宫法中五宫寄坤二宫，无独立门星符号</div>';
     return;
   }
 
-  let html = '';
-
-  // 天盘实战克应与天干六变综合研判表 (根据用户要求全面合并，遁甲、相合、相刑无状态不显示，默认隐藏3个次要信息)
   const ma = analysis.mergedAnalysis;
-  if (ma && ma.rows && ma.rows.length > 0) {
-    html += '<div class="merged-analysis-card">';
-    html += '  <div class="merged-table-responsive">';
-    html += `    <table class="merged-table imagery-mode-${state.imageryMode || 'all'}">`;
-    html += '      <thead>';
-    html += '        <tr>';
-    html += '          <th class="merged-th-tag">项目</th>';
-    html += '          <th class="merged-th-desc">';
-    html += '            <div class="desc-header-flex">';
-    html += '              <span class="desc-header-title">实战象意与深层分析</span>';
-    html += `              ${renderImageryModeGroupHtml(state.imageryMode)}`;
-    html += '            </div>';
-    html += '          </th>';
-    html += '          <th class="merged-th-status">状态 / 旺衰</th>';
-    html += '        </tr>';
-    html += '      </thead>';
-    html += '      <tbody>';
-    ma.rows.forEach(r => {
-      const isTianganRow = (r.tag === '天盘干');
-      const isDoorRow = (r.tag === '八门' || r.tag === '门');
-      const isDiganRow = (r.tag === '地盘干' || r.tag === '天干能量');
+  if (!ma) {
+    contentDiv.innerHTML = '<div style="color: var(--md-sys-color-outline); padding: 12px 0;">无</div>';
+    return;
+  }
 
-      // 1. 天盘干行默认隐藏, 3. 地盘干行默认隐藏
-      if ((isTianganRow || isDiganRow) && !state.showKeyingDetails) {
-        return;
+  const matchRes = checkPalaceMatchYongShen(pan, gong, state.selectedYongShen);
+  const isYongShenPalace = matchRes && matchRes.matched;
+
+  // 1. 设置总开关最高权限：默认展开详细 (不管有没有用神都遵循总开关，用户手动切换当前宫时记录在 palaceModeOverrides)
+  const defaultFullMode = state.showKeyingDetails !== false;
+  let isFullMode = defaultFullMode;
+  if (state.palaceModeOverrides && state.palaceModeOverrides[gong] !== undefined) {
+    isFullMode = !!state.palaceModeOverrides[gong];
+  }
+
+  updateKeyingToggleBtn(isFullMode);
+
+  // 2. 人象/物象/事象默认跟用神属性走 (人物用神人象，物品用神物象，事情用神事态)
+  let activeImageryMode = state.imageryMode || 'all';
+  if (isYongShenPalace && (!state.userSelectedImageryMode || state.userSelectedImageryMode === 'auto')) {
+    let primaryNature = 'person';
+    for (const ysName of matchRes.items) {
+      if (state.selectedYongShenNatures && state.selectedYongShenNatures[ysName]) {
+        primaryNature = state.selectedYongShenNatures[ysName];
+        break;
       }
-
-      // 2. 门行状态默认隐藏
-      let statusHtml = '';
-      let descHtml = r.html || r.content;
-      let trDataAttr = '';
-
-      if (r.tag === '十干克应' && r.items && r.items.length > 1) {
-        trDataAttr = ` data-shigan-items="${JSON.stringify(r.items).replace(/"/g, '&quot;')}"`;
-        const btnGroupHtml = `
-          <div class="shigan-btn-group">
-            ${r.items.map((it, idx) => `
-              <button type="button" class="shigan-switch-btn ${idx === 0 ? 'active' : ''}" data-idx="${idx}">
-                ${it.name}
-              </button>
-            `).join('')}
-          </div>
-        `;
-        descHtml = `${btnGroupHtml}<div class="shigan-desc-display">${r.items[0].content}</div>`;
-        statusHtml = `<span class="merged-status-badge ${r.items[0].statusClass} shigan-live-status">${r.items[0].status}</span>`;
-      } else {
-        if (r.status) {
-          if (!isDoorRow || state.showKeyingDetails) {
-            statusHtml = `<span class="merged-status-badge ${r.statusClass}">${r.status}</span>`;
-          }
-        }
-      }
-
-      html += `        <tr${trDataAttr}>
-          <td class="merged-cell-tag"><span class="merged-tag-badge ${r.tagClass}">${r.tag}</span></td>
-          <td class="merged-cell-desc">${descHtml}</td>
-          <td class="merged-cell-status">${statusHtml}</td>
-        </tr>`;
-    });
-    html += '      </tbody>';
-    html += '    </table>';
-    html += '  </div>';
-
-    if (ma.classicEvidence && ma.classicEvidence.length > 0) {
-      html += '  <div class="merged-classic-block">';
-      html += '    <div class="merged-classic-title">典籍印证：</div>';
-      ma.classicEvidence.forEach(c => {
-        html += `    <div class="merged-classic-item">${c}</div>`;
-      });
-      html += '  </div>';
     }
-    html += '</div>';
+    if (primaryNature === 'object') activeImageryMode = 'wu';
+    else if (primaryNature === 'matter') activeImageryMode = 'all';
+    else activeImageryMode = 'ren';
   }
 
-  if (!html) {
-    html = '<div style="color: var(--md-sys-color-outline); padding: 8px 0; font-size: 14px; font-weight: 500;">无</div>';
+  // 3. 构建顶部宫头 Banner (包含宫名姿态、用神角色、状态徽章、月令旺衰)
+  const pInfo = DIPAN_PALACE_INFO[gong];
+  const bagua = pInfo ? pInfo.bagua : '';
+  const yue = ma.yuelingSimple || { text: '平', level: '平', tagClass: 'status-ping', desc: '' };
+  const badges = ma.statusBadges || [];
+
+  let badgesHtml = badges.map(b => `
+    <span class="palace-status-badge ${b.tagClass}" title="${escapeHtml(b.title)}">${escapeHtml(b.text)}</span>
+  `).join('');
+
+  let yongshenRoleHtml = ma.yongshenRole ? `
+    <span class="palace-yongshen-role" title="本次所问事项中的用神角色">用神：${escapeHtml(ma.yongshenRole)}</span>
+  ` : '';
+
+  let headBannerHtml = `
+    <div class="palace-head-card">
+      <div class="palace-head-main">
+        <span class="palace-head-name">${pInfo ? pInfo.name : ''} · ${bagua ? (ESSENCE_KEYWORDS.bagua[bagua] ? ESSENCE_KEYWORDS.bagua[bagua].split('·')[1] : bagua) : ''}</span>
+        <span class="palace-wangshuai-tag ${yue.tagClass}" title="${escapeHtml(yue.desc)}">[${yue.level}]</span>
+        ${badgesHtml}
+        ${yongshenRoleHtml}
+      </div>
+      <div class="palace-head-aside" title="以月令月支为纲计算的宫位旺衰力量">
+        <span class="palace-yueling-text">${escapeHtml(yue.text)}</span>
+      </div>
+    </div>
+  `;
+
+  let html = headBannerHtml;
+
+  // 4. 表格渲染：精简模式下仅展示【宫位】与【十干克应】，详细模式下展示全部符号 (天盘干/地盘干/九星/八门/八神等)
+  const rowsToRender = isFullMode
+    ? (ma.rows || [])
+    : (ma.rows || []).filter(r => r.tag === '宫位' || r.tag === '十干克应');
+
+  html += '<div class="merged-analysis-card">';
+  html += '  <div class="merged-table-responsive">';
+  html += `    <table class="merged-table imagery-mode-${activeImageryMode}">`;
+  html += '      <thead>';
+  html += '        <tr>';
+  html += '          <th class="merged-th-tag">符号</th>';
+  html += '          <th class="merged-th-desc">';
+  html += '            <div class="desc-header-flex">';
+  html += '              <span class="desc-header-title">实战象意与深层分析</span>';
+  if (isFullMode) {
+    html += `          ${renderImageryModeGroupHtml(activeImageryMode)}`;
   }
+  html += '            </div>';
+  html += '          </th>';
+  html += '          <th class="merged-th-status">状态 / 旺衰</th>';
+  html += '        </tr>';
+  html += '      </thead>';
+  html += '      <tbody>';
+
+  rowsToRender.forEach(r => {
+    let statusHtml = '';
+    let descHtml = r.html || r.content;
+    let trDataAttr = '';
+
+    if (r.tag === '十干克应') {
+      const items = r.items || [];
+      if (items.length > 1) {
+        trDataAttr = ` data-shigan-items="${JSON.stringify(items).replace(/"/g, '&quot;')}"`;
+      }
+      const btnGroupHtml = items.length > 1 ? `
+        <div class="shigan-btn-group">
+          ${items.map((it, idx) => `
+            <button type="button" class="shigan-switch-btn ${idx === 0 ? 'active' : ''}" data-idx="${idx}">
+              ${it.name}
+            </button>
+          `).join('')}
+        </div>
+      ` : '';
+
+      // 典籍印证折叠嵌入在十干克应行内
+      const classicText = items[0] ? items[0].classicText : r.classicText;
+      const classicFoldHtml = classicText ? `
+        <div class="shigan-classic-fold-wrap">
+          <button type="button" class="shigan-classic-toggle-btn" onclick="const p = this.nextElementSibling; p.classList.toggle('show'); this.textContent = p.classList.contains('show') ? '收起古籍原文 ▴' : '典籍印证 ▾';">典籍印证 ▾</button>
+          <div class="shigan-classic-detail-text">${escapeHtml(classicText)}</div>
+        </div>
+      ` : '';
+
+      descHtml = `${btnGroupHtml}<div class="shigan-desc-display">${items[0] ? items[0].content : r.content}</div>${classicFoldHtml}`;
+      statusHtml = `<span class="merged-status-badge ${items[0] ? items[0].statusClass : r.statusClass} shigan-live-status">${items[0] ? items[0].status : r.status}</span>`;
+    } else {
+      if (r.status) {
+        statusHtml = `<span class="merged-status-badge ${r.statusClass}">${r.status}</span>`;
+      }
+    }
+
+    html += `
+      <tr${trDataAttr}>
+        <td class="merged-cell-tag"><span class="merged-tag-badge ${r.tagClass}">${r.tag}</span></td>
+        <td class="merged-cell-desc">${descHtml}</td>
+        <td class="merged-cell-status">${statusHtml}</td>
+      </tr>
+    `;
+  });
+
+  html += '      </tbody>';
+  html += '    </table>';
+  html += '  </div>';
+  html += '</div>';
 
   contentDiv.innerHTML = html;
+  document.getElementById('keyingTitle').textContent = `『${pInfo ? pInfo.name : '宫位'}』克应研判`;
 }
 
 function renderCalendarTerms(pan) {
@@ -1972,9 +3185,226 @@ function renderCalendarTerms(pan) {
   document.getElementById('calTermNext').textContent = `${nxt.name}: ${String(nxt.month).padStart(2, '0')}月${String(nxt.day).padStart(2, '0')}日${nxt.hour}时${nxt.minute}分`;
 }
 
-// 8. 快捷功能实现
-function setToNow() {
+// 8. 快捷功能与立即起盘流程实现 (先取用神、锁定当前时刻、防止剧透后展示盘面)
+let openYSModalHandler = null;
+
+function jumpCalendarToToday() {
   const now = new Date();
+  state.calViewYear = now.getFullYear();
+  state.calViewMonth = now.getMonth() + 1;
+  renderCalendar();
+  showToast('已切回当月万年历');
+}
+
+// ================== 起局记录锁定 (Cast Record Lock) ==================
+// 叶鸿生：想测的那一刻直接起局，不改任何设置；固定用一种设置，不要今天拆补、明天置闰；
+// 同一件事两小时内不要反复起；起好后立即截图保存。
+// 立即起盘 → 生成只读起局记录(含盘面快照) → 先立用神 → 揭盘自动存档；
+// 锁定期间改动起局参数，需要确认并另开新盘，原记录保持不变。
+
+const ACTIVE_RECORD_KEY = 'qimen_active_record_id';
+let caseListRefresher = null; // 由案例库模块注入，用于刷新列表
+
+function getActiveRecord() {
+  return state.activeRecordId ? getRecord(state.activeRecordId) : null;
+}
+
+function setActiveRecord(id) {
+  state.activeRecordId = id || null;
+  try {
+    if (id) localStorage.setItem(ACTIVE_RECORD_KEY, id);
+    else localStorage.removeItem(ACTIVE_RECORD_KEY);
+  } catch (e) {}
+  renderLockBadge();
+}
+
+function refreshCaseList(selectId) {
+  if (typeof caseListRefresher === 'function') caseListRefresher(selectId);
+  renderDueBanner();
+}
+
+// 用户固定使用的起局设置 (设置里保存的偏好)，立即起盘时一律使用它
+function preferredCastSettings() {
+  return {
+    dingjuMethod: localStorage.getItem('qimen_dingju_method') || 'zhirun',
+    paipanMethod: localStorage.getItem('qimen_paipan_method') || 'zhuan',
+    zishi: localStorage.getItem('qimen_zishi') || 'split'
+  };
+}
+
+function applyRecordParamsToState(rec) {
+  state.year = rec.year;
+  state.month = rec.month;
+  state.day = rec.day;
+  state.hour = rec.hour;
+  state.minute = rec.minute;
+  if (rec.longitude) state.longitude = rec.longitude;
+  if (rec.cityName) state.cityName = rec.cityName;
+  state.dingjuMethod = rec.dingjuMethod || 'zhirun';
+  state.paipanMethod = rec.paipanMethod || 'zhuan';
+  state.zishi = rec.zishi || 'split';
+  state.manualJu = (rec.manualJu && rec.manualJu.dun && rec.manualJu.ju) ? { ...rec.manualJu } : null;
+  state.customPillars = rec.customPillars ? { ...rec.customPillars } : null;
+}
+
+// 拒绝改动时，把界面与状态恢复成锁定记录的起局参数
+function restoreLockedParams(rec) {
+  applyRecordParamsToState(rec);
+  const ipt = document.getElementById('iptBaoShu');
+  const rem = document.getElementById('txtBaoshuRem');
+  if (ipt && !(rec.manualJu && rec.manualJu.type === 'baoshu')) ipt.value = '';
+  if (rem && !(rec.manualJu && rec.manualJu.type === 'baoshu')) rem.textContent = '余：-';
+  const selBaoshi = document.getElementById('selBaoshiHour');
+  if (selBaoshi) selBaoshi.value = 'default';
+  syncControlsUI();
+  if (typeof syncSettingsModal === 'function') syncSettingsModal();
+  renderCalendar();
+  showToast('已保留原局，起局参数未改动');
+}
+
+// 询问是否解除当前起局锁定；返回 true 表示可以继续改动
+function confirmLeaveLock(actionLabel = '改动起局参数') {
+  const rec = getActiveRecord();
+  if (!rec) return true;
+  const title = rec.userQuestion || rec.title || rec.dateStr || '当前起局';
+  let msg;
+  if (rec.status === 'pending') {
+    msg = `本局【${rec.dateStr}】尚未揭盘。\n\n${actionLabel}会放弃这一局（记录标为“作废”），按新参数另排一张研究盘。\n\n叶鸿生：刚起盘就觉得时间不对、问题不清楚，这个盘就别看了。\n\n确定放弃这一局吗？`;
+  } else {
+    msg = `当前锁定的是起局记录【${title}】。\n\n${actionLabel}会另开一张新盘，原记录与盘面保持不变。\n\n叶鸿生：固定用一种设置；同一件事要再看，用报数起局。\n\n确定另开新盘吗？`;
+  }
+  if (!window.confirm(msg)) return false;
+  releaseLock(rec.status === 'pending' ? 'void' : 'keep');
+  return true;
+}
+
+// 定局法/排盘法/子时这类“固定设置”的改动守卫 (在写入偏好之前调用)
+function guardPrefChange(key, val, label) {
+  const rec = getActiveRecord();
+  if (!rec || state[key] === val) return true;
+  if (confirmLeaveLock(label)) return true;
+  syncControlsUI();
+  if (typeof syncSettingsModal === 'function') syncSettingsModal();
+  return false;
+}
+
+function releaseLock(mode = 'keep') {
+  const rec = getActiveRecord();
+  if (rec && mode === 'void' && rec.status === 'pending') {
+    updateRecord(rec.id, r => {
+      r.status = 'void';
+      r.voidReason = '揭盘前改动起局参数，放弃此局';
+    });
+  }
+  state.lastReleasedRecordId = rec ? rec.id : null;
+  if (state.isPendingReveal) {
+    state.isPendingReveal = false;
+    applyPendingVisualMasks(false);
+    const banner = document.getElementById('yongshenCastBanner');
+    if (banner) banner.style.display = 'none';
+    const btnConfirm = document.getElementById('btnConfirmYongShen');
+    if (btnConfirm) btnConfirm.textContent = '确定';
+  }
+  setActiveRecord(null);
+  refreshCaseList();
+}
+
+// 待揭盘期间禁止任何能看到盘面的操作
+function blockIfPending(actionName = '该操作') {
+  if (!state.isPendingReveal) return false;
+  showToast(`盘面尚未揭晓：请先选取用神并揭盘，再使用${actionName}`);
+  return true;
+}
+
+// 待揭盘时不把盘面内容留在页面里 (不只是模糊)
+function scrubPendingContent() {
+  document.querySelectorAll('#nineGrid .palace-cell').forEach(cell => {
+    cell.innerHTML = '<div class="pending-cell-placeholder">?</div>';
+  });
+  const hide = ['txtGanzhi', 'txtJuDesc', 'txtKongwang', 'txtXunshou', 'txtStarFu', 'txtFuGong', 'txtDoorShi', 'txtDoorGong', 'txtWuBuYuDesc'];
+  hide.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '··';
+  });
+  document.querySelectorAll('.ju-banner .badge-pattern').forEach(el => el.remove());
+  const row = document.getElementById('itemWuBuYuRow');
+  if (row) row.style.display = 'none';
+  const center = document.getElementById('boardCardCenter');
+  if (center) center.textContent = '待揭盘';
+}
+
+// 盘面卡片上的锁定状态徽标
+function renderLockBadge() {
+  const el = document.getElementById('txtLockBadge');
+  if (!el) return;
+  const rec = getActiveRecord();
+  if (!rec) {
+    el.style.display = 'none';
+    el.textContent = '';
+    return;
+  }
+  el.style.display = 'inline-flex';
+  const label = rec.status === 'pending' ? '待揭盘' : (rec.source === 'cast' ? '起局记录' : '案例');
+  el.textContent = `🔒 ${label} ${rec.dateStr ? rec.dateStr.slice(5) : ''}`;
+  el.title = '起局参数已锁定：改动时间、定局法、排盘法等会提示另开新盘，原记录不变';
+}
+
+// 刷新/重开页面时恢复正在进行的起局记录
+function restoreActiveRecordOnLoad() {
+  const rec = getActiveRecord();
+  if (!rec) {
+    if (state.activeRecordId) setActiveRecord(null);
+    return;
+  }
+  if (rec.status === 'void') {
+    setActiveRecord(null);
+    return;
+  }
+  applyRecordParamsToState(rec);
+  state.userQuestion = rec.userQuestion || '';
+  state.caseRemark = rec.remark || '';
+  if (Array.isArray(rec.selectedYongShen)) state.selectedYongShen = [...rec.selectedYongShen];
+  if (rec.yongshenNature) state.yongshenNature = rec.yongshenNature;
+  state.isPendingReveal = rec.status === 'pending';
+  state.calViewYear = state.year;
+  state.calViewMonth = state.month;
+  syncControlsUI();
+  renderCalendar();
+}
+
+// 把用神弹窗里的问题/用神/笔记写回当前记录 (防抖自动保存)
+let recordAutosaveTimer = null;
+function scheduleRecordAutosave() {
+  if (!state.activeRecordId) return;
+  clearTimeout(recordAutosaveTimer);
+  recordAutosaveTimer = setTimeout(flushRecordAutosave, 400);
+}
+
+function flushRecordAutosave() {
+  clearTimeout(recordAutosaveTimer);
+  const id = state.activeRecordId;
+  if (!id) return;
+  updateRecord(id, r => {
+    r.userQuestion = state.userQuestion || '';
+    if (!r.titleEdited) r.title = state.userQuestion || r.title || '';
+    r.remark = state.caseRemark || '';
+  });
+}
+
+function startImmediateCastFlow() {
+  // 0. 上一局还没揭盘就重新起局：上一局作废
+  const prev = getActiveRecord();
+  if (prev && prev.status === 'pending') {
+    updateRecord(prev.id, r => {
+      r.status = 'void';
+      r.voidReason = '未揭盘即重新起局';
+    });
+  }
+  flushRecordAutosave();
+
+  // 1. 取当前系统时刻 (精确到秒) 并使用固定的起局设置
+  const now = new Date();
+  const pref = preferredCastSettings();
   state.year = now.getFullYear();
   state.month = now.getMonth() + 1;
   state.day = now.getDate();
@@ -1982,13 +3412,14 @@ function setToNow() {
   state.minute = now.getMinutes();
   state.manualJu = null;
   state.customPillars = null;
+  state.dingjuMethod = pref.dingjuMethod;
+  state.paipanMethod = pref.paipanMethod;
+  state.zishi = pref.zishi;
 
   const selManual = document.getElementById('selManualJu');
   if (selManual) selManual.value = 'auto';
-
   const selBaoshi = document.getElementById('selBaoshiHour');
   if (selBaoshi) selBaoshi.value = 'default';
-
   const ipt = document.getElementById('iptBaoShu');
   const rem = document.getElementById('txtBaoshuRem');
   if (ipt) ipt.value = '';
@@ -1997,10 +3428,148 @@ function setToNow() {
   state.calViewYear = state.year;
   state.calViewMonth = state.month;
 
-  syncDateTimeToPickers();
+  // 2. 新一局：问题与笔记从空白开始 (上一局的内容已自动保存在它自己的记录里)
+  state.userQuestion = '';
+  state.caseRemark = '';
+  try {
+    localStorage.removeItem('qimen_user_question');
+    localStorage.removeItem('qimen_case_remark');
+  } catch (e) {}
+  ['iptUserQuestion', 'txtUserRemark', 'txtCaseRemark', 'iptCaseTitle'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  state.selectedYongShen = ['值符'];
+  state.hasAnimatedOnFirstYS = false;
+  try {
+    localStorage.setItem('qimen_selected_yongshen', JSON.stringify(['值符']));
+    localStorage.setItem('qimen_zhifu_manually_cleared', '0');
+  } catch (e) {}
+
+  // 3. 叶鸿生起局纪律提示：一天两三局、同一件事两小时内不反复起
+  const all = loadRecords();
+  const recent = lastCast(all);
+  const minutesSinceLast = recent ? Math.round((now - new Date(recent.createdAt)) / 60000) : null;
+  const todayCount = castsOnDay(all, todayStr(now)) + 1;
+
+  // 4. 生成只读起局记录 (待揭盘)
+  const rec = insertRecord({
+    id: newId(),
+    source: 'cast',
+    status: 'pending',
+    createdAt: now.toISOString(),
+    castAtSeconds: now.getSeconds(),
+    engineVersion: ENGINE_VERSION,
+    title: '',
+    userQuestion: '',
+    remark: '',
+    selectedYongShen: ['值符'],
+    yongshenNature: state.yongshenNature,
+    dateStr: formatDateStr(state.year, state.month, state.day, state.hour, state.minute),
+    ...settingsOf(state),
+    castContext: {
+      minutesSinceLastCast: minutesSinceLast,
+      lastCastQuestion: recent ? (recent.userQuestion || '') : '',
+      castIndexToday: todayCount
+    }
+  });
+  state.activeRecordId = null; // 先不锁，避免首次排盘被兜底拦截
+  state.isPendingReveal = true;
+  syncControlsUI();
   renderCalendar();
+
+  if (typeof switchMobileTab === 'function') {
+    switchMobileTab('pan');
+  }
+
   executePaipan();
-  showToast('已重置为当前系统时间');
+  setActiveRecord(rec.id);
+
+  // 5. 立即写入盘面快照：锁住的是数据，不只是遮罩
+  if (state.currentPan) {
+    const snap = snapshotPan(state.currentPan);
+    updateRecord(rec.id, r => {
+      r.panSnapshot = snap;
+      r.panFingerprint = panFingerprint(snap);
+      r.pillars = { ...state.currentPan.pillars };
+      r.juDesc = state.currentPan.dingju ? state.currentPan.dingju.desc : '';
+    });
+  }
+  refreshCaseList(rec.id);
+  renderCastDisciplineHint(rec);
+
+  if (todayCount > 3) {
+    showToast(`今天已是第 ${todayCount} 次正式起局。叶鸿生：替人预测一天最好两三局，起太多信息会混乱`);
+  }
+
+  // 6. 自动弹出“选取用神与所问事项”弹窗 (先取用神)
+  if (typeof openYSModalHandler === 'function') {
+    openYSModalHandler(true);
+  }
+}
+
+// 在用神弹窗横幅里提示起局纪律
+function renderCastDisciplineHint(rec) {
+  const el = document.getElementById('txtCastDiscipline');
+  if (!el) return;
+  const ctx = (rec && rec.castContext) || {};
+  const tips = [];
+  if (ctx.minutesSinceLastCast !== null && ctx.minutesSinceLastCast !== undefined && ctx.minutesSinceLastCast < 120) {
+    tips.push(`距上一局仅 ${ctx.minutesSinceLastCast} 分钟${ctx.lastCastQuestion ? `（上一局：${ctx.lastCastQuestion}）` : ''}。若是同一件事，叶鸿生建议两小时内不要反复起，改用报数起局。`);
+  }
+  if (ctx.castIndexToday > 3) {
+    tips.push(`今天第 ${ctx.castIndexToday} 局：一天最好两三局。`);
+  }
+  el.textContent = tips.join(' ');
+  el.style.display = tips.length ? 'block' : 'none';
+}
+
+function revealPanNow() {
+  const rec = getActiveRecord();
+  state.isPendingReveal = false;
+  applyPendingVisualMasks(false);
+
+  const banner = document.getElementById('yongshenCastBanner');
+  if (banner) banner.style.display = 'none';
+
+  const btnConfirm = document.getElementById('btnConfirmYongShen');
+  if (btnConfirm) btnConfirm.textContent = '确定';
+
+  executePaipan();
+
+  // 揭盘即存档：记录揭盘时刻与揭盘时的用神 (之后改用神也能看到最初取的是什么)
+  if (rec) {
+    const ctx = rec.castContext || {};
+    const sameQuestionRepeat = !!(state.userQuestion && ctx.lastCastQuestion &&
+      ctx.lastCastQuestion.trim() === state.userQuestion.trim() &&
+      ctx.minutesSinceLastCast !== null && ctx.minutesSinceLastCast < 120);
+    updateRecord(rec.id, r => {
+      r.status = 'revealed';
+      r.revealedAt = new Date().toISOString();
+      r.userQuestion = state.userQuestion || '';
+      if (!r.titleEdited) r.title = state.userQuestion || r.title || '';
+      r.remark = state.caseRemark || '';
+      r.selectedYongShen = [...(state.selectedYongShen || [])];
+      r.ysAtReveal = [...(state.selectedYongShen || [])];
+      r.yongshenNature = state.yongshenNature;
+      r.flags = { ...(r.flags || {}), repeatWithin2h: sameQuestionRepeat };
+    });
+    refreshCaseList(rec.id);
+    if (sameQuestionRepeat) {
+      setTimeout(() => showToast('提示：同一件事两小时内重复起局，信息容易混乱；已在记录中标注'), 1800);
+    }
+  }
+
+  const ysText = (state.selectedYongShen && state.selectedYongShen.length > 0)
+    ? `【${state.selectedYongShen.join('、')}】`
+    : '【默认首领值符】';
+  showToast(`起局成功！已锁定用神${ysText}，盘面已揭晓并自动存入案例库`);
+}
+
+
+function setToNow() {
+  startImmediateCastFlow();
 }
 
 function toggleSimpleMode() {
@@ -2021,6 +3590,7 @@ function toggleTheme() {
 }
 
 function copyQimenToClipboard() {
+  if (blockIfPending('复制排盘')) return;
   if (!state.currentPan) return;
   const text = formatPlainQimen(state.currentPan);
 
@@ -2134,6 +3704,7 @@ function formatPalaceAnalysisText(p, gong, opts = {}) {
 
 // 复制用神：复制内容包含所问事项、所选用神落宫详析，若逢旬空且看对宫则把旬空对冲宫完整包含在内
 function copyYongShenAnalysis() {
+  if (blockIfPending('复制用神')) return;
   if (!state.currentPan) {
     showToast('当前无可用排盘信息');
     return;
@@ -2336,6 +3907,7 @@ function getKeyingModalCurrentContentText() {
 
 // 复制全盘克应速查弹窗当前信息 (全盘或仅看用神与对冲宫)
 function copyKeyingModalCurrentContent() {
+  if (blockIfPending('复制研判')) return;
   if (!state.currentPan) {
     showToast('当前无可用排盘信息');
     return;
@@ -2355,6 +3927,7 @@ function copyKeyingModalCurrentContent() {
 
 // 一起复制排盘与当前信息 (完整排盘 + 当前克应信息)
 function copyKeyingModalPanAndCurrentContent() {
+  if (blockIfPending('复制排盘')) return;
   if (!state.currentPan) {
     showToast('当前无可用排盘信息');
     return;
@@ -2550,11 +4123,7 @@ function renderKeyingModalContent() {
       html += '      </thead>';
       html += '      <tbody>';
       ma.rows.forEach(r => {
-        const isTianganRow = (r.tag === '天盘干');
-        const isDoorRow = (r.tag === '八门' || r.tag === '门');
-        const isDiganRow = (r.tag === '地盘干' || r.tag === '天干能量');
-
-        if ((isTianganRow || isDiganRow) && !state.showKeyingDetails) {
+        if (!state.showKeyingDetails && r.tag !== '宫位' && r.tag !== '十干克应') {
           return;
         }
 
@@ -2577,9 +4146,7 @@ function renderKeyingModalContent() {
           statusHtml = `<span class="merged-status-badge ${r.items[0].statusClass} shigan-live-status">${r.items[0].status}</span>`;
         } else {
           if (r.status) {
-            if (!isDoorRow || state.showKeyingDetails) {
-              statusHtml = `<span class="merged-status-badge ${r.statusClass}">${r.status}</span>`;
-            }
+            statusHtml = `<span class="merged-status-badge ${r.statusClass}">${r.status}</span>`;
           }
         }
 
@@ -2611,6 +4178,7 @@ function renderKeyingModalContent() {
 
 // 全盘克应速查模态弹窗
 function openKeyingModal() {
+  if (blockIfPending('全盘克应')) return;
   if (!state.currentPan) {
     executePaipan();
   }
@@ -2619,10 +4187,30 @@ function openKeyingModal() {
   openModal('modalKeying');
 }
 
-// 9. 案例库与 localStorage 持久化 (全量复原排盘、局数、自定义干支、所问问题与断语笔记)
+// 9. 案例库 (起局记录) 与 localStorage 持久化
+// 每条记录按 id 管理，保存起局参数 + 完整盘面快照 + 问题、用神、笔记、反馈；读取时以快照为准。
+function methodNames(item) {
+  const dingjuName = item.dingjuMethod === 'zhirun' ? '置闰' : (item.dingjuMethod === 'chaibu' ? '拆补' : '茅山');
+  const paipanName = item.paipanMethod === 'zhuan' ? '转盘' : '飞盘';
+  return `${dingjuName}/${paipanName}`;
+}
+
+function recordSummary(item) {
+  const juStr = item.juDesc || (item.manualJu ? `${item.manualJu.dun}遁${['一','二','三','四','五','六','七','八','九'][item.manualJu.ju - 1]}局` : '');
+  const pillarsStr = item.pillars ? `${item.pillars.year} ${item.pillars.month} ${item.pillars.day} ${item.pillars.hour}` : (item.customPillars ? `${item.customPillars.year} ${item.customPillars.month} ${item.customPillars.day} ${item.customPillars.hour}` : '');
+  return [juStr, pillarsStr, methodNames(item)].filter(Boolean).join(' ｜ ');
+}
+
+const SOURCE_NAMES = { cast: '立即起盘', manual: '手动保存', baoshu: '报数补起', legacy: '旧案例' };
+
 function initCasesStorage() {
   const selCases = document.getElementById('selCaseList');
   const btnLoad = document.getElementById('btnLoadSelectedCase');
+
+  function selectedRecord() {
+    const id = selCases ? selCases.value : '';
+    return id ? getRecord(id) : null;
+  }
 
   function showCaseDetail(item) {
     const panel = document.getElementById('caseDetailPanel');
@@ -2637,299 +4225,400 @@ function initCasesStorage() {
     const qEl = document.getElementById('caseDetailQuestion');
     const remarkEl = document.getElementById('caseDetailRemark');
     const summaryEl = document.getElementById('caseDetailSummary');
+    const metaEl = document.getElementById('caseDetailMeta');
+    const btnVoid = document.getElementById('btnVoidCase');
 
-    if (titleEl) titleEl.textContent = item.title || '无标题案例';
+    if (titleEl) titleEl.textContent = item.title || item.userQuestion || '无标题案例';
     if (timeEl) timeEl.textContent = item.dateStr || '';
     if (qEl) qEl.textContent = item.userQuestion || item.title || '（未记录具体问题）';
     if (remarkEl) {
-      remarkEl.textContent = item.remark ? item.remark : '（暂无断语笔记）';
-      remarkEl.style.fontStyle = item.remark ? 'normal' : 'italic';
-      remarkEl.style.color = item.remark ? 'var(--md-sys-color-on-surface)' : 'var(--md-sys-color-outline)';
+      const n = item.notes || {};
+      const hasStructured = NOTE_FIELDS.some(f => n[f.key]);
+      const text = item.remark || (hasStructured ? (n.judgment || '（已填写结构化笔记，点“笔记与回访”查看）') : '');
+      remarkEl.textContent = text || '（暂无断语笔记）';
+      remarkEl.style.fontStyle = text ? 'normal' : 'italic';
+      remarkEl.style.color = text ? 'var(--md-sys-color-on-surface)' : 'var(--md-sys-color-outline)';
     }
-    if (summaryEl) {
-      const juStr = item.juDesc || (item.manualJu ? `${item.manualJu.dun}遁${['一','二','三','四','五','六','七','八','九'][item.manualJu.ju - 1]}局` : '');
-      const pillarsStr = item.pillars ? `${item.pillars.year} ${item.pillars.month} ${item.pillars.day} ${item.pillars.hour}` : (item.customPillars ? `${item.customPillars.year} ${item.customPillars.month} ${item.customPillars.day} ${item.customPillars.hour}` : '');
-      const dingjuName = item.dingjuMethod === 'zhirun' ? '置闰' : (item.dingjuMethod === 'chaibu' ? '拆补' : '茅山');
-      const paipanName = item.paipanMethod === 'zhuan' ? '转盘' : '飞盘';
-      summaryEl.textContent = [juStr, pillarsStr, `${dingjuName}/${paipanName}`].filter(Boolean).join(' ｜ ');
+    if (summaryEl) summaryEl.textContent = recordSummary(item);
+    if (metaEl) {
+      const bits = [];
+      bits.push(SOURCE_NAMES[item.source] || '案例');
+      if (item.status === 'pending') bits.push('尚未揭盘');
+      if (item.status === 'void') bits.push(`已作废${item.voidReason ? '：' + item.voidReason : ''}`);
+      if (Array.isArray(item.ysAtReveal) && item.ysAtReveal.length) bits.push(`揭盘时用神：${item.ysAtReveal.join('、')}`);
+      if (item.verdict && item.verdict !== '待验证') bits.push(`验证：${item.verdict}`);
+      if (item.flags && item.flags.repeatWithin2h) bits.push('两小时内重复起局');
+      if (item.parentId) {
+        const parent = getRecord(item.parentId);
+        bits.push(`补起自：${parent ? (parent.userQuestion || parent.dateStr) : '原局'}`);
+      }
+      if (!item.panSnapshot) bits.push('无盘面快照（旧案例，按当前算法重算）');
+      const due = (item.followUps || []).filter(f => !f.done && f.date <= todayStr());
+      if (due.length) bits.push(`🔔 ${due.length} 条待回访`);
+      metaEl.textContent = bits.join(' · ');
     }
   }
 
-  function loadCases(selectedIdx = null) {
+  function loadCases(selectId = null) {
+    if (!selCases) return;
+    const stored = loadRecords();
     selCases.innerHTML = '';
-    const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
     const countEl = document.getElementById('txtCaseCount');
     if (countEl) countEl.textContent = `查找到${stored.length}个`;
-
     const emptyEl = document.getElementById('caseEmptyState');
 
-    stored.forEach((item, idx) => {
+    stored.forEach(item => {
       const opt = document.createElement('option');
-      opt.value = idx;
-      opt.textContent = `[${item.dateStr}] ${item.title || '无标题格局'}`;
+      opt.value = item.id;
+      const label = statusLabel(item);
+      opt.textContent = `${label ? label + ' ' : ''}[${item.dateStr}] ${item.title || item.userQuestion || '无标题格局'}`;
       selCases.appendChild(opt);
     });
 
     if (stored.length > 0) {
       if (emptyEl) emptyEl.style.display = 'none';
-      if (selCases) selCases.style.display = 'block';
-      const targetIdx = (selectedIdx !== null && selectedIdx >= 0 && selectedIdx < stored.length) ? selectedIdx : 0;
-      selCases.value = targetIdx;
-      showCaseDetail(stored[targetIdx]);
+      selCases.style.display = 'block';
+      const wanted = selectId || state.activeRecordId;
+      const target = stored.find(r => r.id === wanted) || stored[0];
+      selCases.value = target.id;
+      showCaseDetail(target);
     } else {
       if (emptyEl) emptyEl.style.display = 'flex';
-      if (selCases) selCases.style.display = 'none';
+      selCases.style.display = 'none';
       showCaseDetail(null);
     }
   }
+  caseListRefresher = loadCases;
 
   function applyCase(item) {
     if (!item) return;
-
-    // 1. 恢复核心时间与地理参数
-    state.year = item.year;
-    state.month = item.month;
-    state.day = item.day;
-    state.hour = item.hour;
-    state.minute = item.minute;
-    state.longitude = item.longitude || state.longitude;
-    state.cityName = item.cityName || state.cityName;
-
-    // 2. 恢复定局与排盘流派
-    state.dingjuMethod = item.dingjuMethod || 'zhirun';
-    state.paipanMethod = item.paipanMethod || 'zhuan';
-    state.zishi = item.zishi || 'split';
-
-    // 3. 恢复局数 (manualJu: 关键修复，确保阴九局等指定局不丢失)
-    if (item.manualJu && item.manualJu.dun && item.manualJu.ju) {
-      state.manualJu = { ...item.manualJu };
-    } else {
-      state.manualJu = null;
+    flushRecordAutosave();
+    const cur = getActiveRecord();
+    if (cur && cur.id !== item.id && cur.status === 'pending') {
+      if (!confirmLeaveLock('读取其他案例')) return;
     }
 
-    // 4. 恢复四柱干支 (customPillars: 关键修复，确保手动输入干支不丢失)
-    if (item.customPillars) {
-      state.customPillars = { ...item.customPillars };
-    } else {
-      state.customPillars = null;
-    }
+    // 1. 起局参数 (时间、地点、定局法、排盘法、子时、局数、自定义四柱)
+    applyRecordParamsToState(item);
 
-    // 5. 恢复所问问题与笔记 (支持同步到盘面中间显示及用神弹窗)
+    // 2. 所问问题、笔记、用神与“人/物/事”属性
     state.userQuestion = item.userQuestion || item.title || '';
-    localStorage.setItem('qimen_user_question', state.userQuestion);
     state.caseRemark = item.remark || '';
-
-    // 6. 恢复选定用神
-    if (Array.isArray(item.selectedYongShen) && item.selectedYongShen.length > 0) {
-      state.selectedYongShen = [...item.selectedYongShen];
+    if (Array.isArray(item.selectedYongShen)) state.selectedYongShen = [...item.selectedYongShen];
+    if (item.yongshenNature) state.yongshenNature = item.yongshenNature;
+    try {
+      localStorage.setItem('qimen_user_question', state.userQuestion);
+      localStorage.setItem('qimen_case_remark', state.caseRemark);
       localStorage.setItem('qimen_selected_yongshen', JSON.stringify(state.selectedYongShen));
-    }
+    } catch (e) {}
+    const txtUser = document.getElementById('txtUserRemark');
+    if (txtUser) txtUser.value = state.caseRemark;
+    const txtCase = document.getElementById('txtCaseRemark');
+    if (txtCase) txtCase.value = state.caseRemark;
 
-    // 7. 同步所有界面控件（分段按钮、下拉框、时间框、问题框）
+    // 3. 锁定到这条记录 (读取的案例同样只读，改参数要另开新盘)
+    state.isPendingReveal = item.status === 'pending';
+    state.activeRecordId = null;
+    state.calViewYear = state.year;
+    state.calViewMonth = state.month;
     syncControlsUI();
     renderCalendar();
+    setActiveRecord(item.id);
     executePaipan();
-    showToast(`已成功读取并复原案例【${item.title}】的完整排盘、问题与笔记！`);
+
+    // 4. 旧案例没有盘面快照：四柱/局数与当年记录一致才补存快照，否则提示
+    if (!item.panSnapshot && state.currentPan) {
+      const p = state.currentPan;
+      const pillarsOk = !item.pillars || JSON.stringify(item.pillars) === JSON.stringify(p.pillars);
+      const juOk = !item.juDesc || (p.dingju && item.juDesc === p.dingju.desc);
+      if (pillarsOk && juOk) {
+        const snap = snapshotPan(p);
+        updateRecord(item.id, r => {
+          r.panSnapshot = snap;
+          r.panFingerprint = panFingerprint(snap);
+          r.pillars = { ...p.pillars };
+          r.juDesc = p.dingju ? p.dingju.desc : r.juDesc;
+        });
+      } else {
+        setTimeout(() => showToast('注意：旧案例未保存盘面快照，按当前算法重算的四柱/局数与当时记录不一致'), 800);
+      }
+    }
+
+    loadCases(item.id);
+    if (state.isPendingReveal && typeof openYSModalHandler === 'function') {
+      openYSModalHandler(true);
+      return;
+    }
+    showToast(`已读取案例【${item.title || item.userQuestion || item.dateStr}】的原盘、问题与笔记`);
   }
 
-  // 打开保存案例弹窗时，自动预填当前问题与笔记
-  document.getElementById('btnSaveCase').addEventListener('click', () => {
+  // 保存：有锁定记录时更新这条记录，没有时把当前研究盘另存为新记录
+  function openSaveCaseModal() {
+    const rec = getActiveRecord();
     const iptTitle = document.getElementById('iptCaseTitle');
     const txtRemark = document.getElementById('txtCaseRemark');
+    const headline = document.getElementById('txtSaveCaseHeadline');
+    if (headline) headline.textContent = rec ? '更新本局记录' : '保存为新案例';
     if (iptTitle) {
-      iptTitle.value = state.userQuestion ? state.userQuestion.trim() : (state.currentPan ? `${state.currentPan.pillars.day}日${state.currentPan.pillars.hour}时 占事` : '');
+      iptTitle.value = (rec && rec.title) || (state.userQuestion ? state.userQuestion.trim() : (state.currentPan ? `${state.currentPan.pillars.day}日${state.currentPan.pillars.hour}时 占事` : ''));
     }
-    if (txtRemark) {
-      txtRemark.value = state.caseRemark || '';
-    }
+    if (txtRemark) txtRemark.value = state.caseRemark || '';
     openModal('modalSaveCase');
+  }
+
+  const btnSaveCase = document.getElementById('btnSaveCase');
+  if (btnSaveCase) btnSaveCase.addEventListener('click', () => {
+    if (blockIfPending('保存')) return;
+    openSaveCaseModal();
+  });
+  const btnBottomSaveCase = document.getElementById('btnBottomSave');
+  if (btnBottomSaveCase) btnBottomSaveCase.addEventListener('click', () => {
+    if (blockIfPending('保存')) return;
+    openSaveCaseModal();
   });
 
-  document.getElementById('btnConfirmSaveCase').addEventListener('click', () => {
-    const title = document.getElementById('iptCaseTitle').value.trim() || '奇门格局案例';
+  const btnClearSaveRemark = document.getElementById('btnClearSaveRemark');
+  if (btnClearSaveRemark) {
+    btnClearSaveRemark.addEventListener('click', () => {
+      const txtRemark = document.getElementById('txtCaseRemark');
+      if (txtRemark && txtRemark.value.trim() && !window.confirm('确定清空这条断语笔记吗？')) return;
+      if (txtRemark) txtRemark.value = '';
+    });
+  }
+
+  const btnConfirmSave = document.getElementById('btnConfirmSaveCase');
+  if (btnConfirmSave) btnConfirmSave.addEventListener('click', () => {
+    const title = document.getElementById('iptCaseTitle').value.trim() || state.userQuestion || '奇门格局案例';
     const remark = document.getElementById('txtCaseRemark').value.trim();
     state.caseRemark = remark;
+    try { localStorage.setItem('qimen_case_remark', remark); } catch (e) {}
+    const txtUser = document.getElementById('txtUserRemark');
+    if (txtUser) txtUser.value = remark;
 
-    const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-    const curPan = state.currentPan;
-    stored.unshift({
-      title,
-      remark, // 断语笔记
-      userQuestion: state.userQuestion ? state.userQuestion.trim() : title, // 所问问题
-      selectedYongShen: Array.isArray(state.selectedYongShen) ? [...state.selectedYongShen] : ['值符'],
-      dateStr: `${state.year}-${state.month}-${state.day} ${state.hour}:${state.minute}`,
-      year: state.year,
-      month: state.month,
-      day: state.day,
-      hour: state.hour,
-      minute: state.minute,
-      longitude: state.longitude,
-      cityName: state.cityName,
-      dingjuMethod: state.dingjuMethod,
-      paipanMethod: state.paipanMethod,
-      zishi: state.zishi,
-      manualJu: state.manualJu ? { ...state.manualJu } : null,
-      customPillars: state.customPillars ? { ...state.customPillars } : null,
-      pillars: (curPan && curPan.pillars) ? { ...curPan.pillars } : null,
-      juDesc: (curPan && curPan.dingju) ? curPan.dingju.desc : ''
-    });
-
-    localStorage.setItem('qimen_saved_cases', JSON.stringify(stored));
+    const rec = getActiveRecord();
+    let savedId;
+    if (rec) {
+      updateRecord(rec.id, r => {
+        r.title = title;
+        r.titleEdited = true;
+        r.remark = remark;
+        r.userQuestion = state.userQuestion ? state.userQuestion.trim() : (r.userQuestion || title);
+      });
+      savedId = rec.id;
+      showToast('已更新本局记录（盘面保持起局时的原样）');
+    } else {
+      const curPan = state.currentPan;
+      const isBaoshu = !!(state.manualJu && state.manualJu.type === 'baoshu');
+      const snap = curPan ? snapshotPan(curPan) : null;
+      const item = insertRecord({
+        id: newId(),
+        source: isBaoshu ? 'baoshu' : 'manual',
+        status: 'revealed',
+        parentId: isBaoshu ? state.lastReleasedRecordId : null,
+        createdAt: new Date().toISOString(),
+        revealedAt: new Date().toISOString(),
+        engineVersion: ENGINE_VERSION,
+        title,
+        titleEdited: true,
+        remark,
+        userQuestion: state.userQuestion ? state.userQuestion.trim() : title,
+        selectedYongShen: Array.isArray(state.selectedYongShen) ? [...state.selectedYongShen] : ['值符'],
+        ysAtReveal: Array.isArray(state.selectedYongShen) ? [...state.selectedYongShen] : ['值符'],
+        yongshenNature: state.yongshenNature,
+        dateStr: formatDateStr(state.year, state.month, state.day, state.hour, state.minute),
+        ...settingsOf(state),
+        panSnapshot: snap,
+        panFingerprint: snap ? panFingerprint(snap) : '',
+        pillars: (curPan && curPan.pillars) ? { ...curPan.pillars } : null,
+        juDesc: (curPan && curPan.dingju) ? curPan.dingju.desc : ''
+      });
+      savedId = item.id;
+      setActiveRecord(item.id);
+      showToast('格局案例已保存，并锁定为当前记录');
+    }
     closeModal('modalSaveCase');
-    loadCases(0);
-    showToast('格局案例已成功保存至本地！');
+    loadCases(savedId);
+    renderDueBanner();
   });
 
-  // 单击/切换选中案例：展示问题与笔记详情
-  selCases.addEventListener('change', () => {
-    const idx = parseInt(selCases.value);
-    const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-    if (stored[idx]) {
-      showCaseDetail(stored[idx]);
-    }
-  });
+  if (selCases) {
+    selCases.addEventListener('change', () => showCaseDetail(selectedRecord()));
+    selCases.addEventListener('click', () => showCaseDetail(selectedRecord()));
+    selCases.addEventListener('dblclick', () => applyCase(selectedRecord()));
+  }
 
-  selCases.addEventListener('click', () => {
-    const idx = parseInt(selCases.value);
-    const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-    if (stored[idx]) {
-      showCaseDetail(stored[idx]);
-    }
-  });
-
-  // 双击列表项：直接起盘并复原
-  selCases.addEventListener('dblclick', () => {
-    const idx = parseInt(selCases.value);
-    const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-    if (stored[idx]) {
-      applyCase(stored[idx]);
-    }
-  });
-
-  // 单击「读取并复原此盘」按钮：读取并复原
   if (btnLoad) {
     btnLoad.addEventListener('click', () => {
-      const idx = parseInt(selCases.value);
-      const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-      if (isNaN(idx) || !stored[idx]) {
+      const item = selectedRecord();
+      if (!item) {
         showToast('请先选择要读取的案例');
         return;
       }
-      applyCase(stored[idx]);
+      applyCase(item);
     });
   }
 
-  let editingCaseIndex = null;
+  let editingCaseId = null;
 
-  function openEditCaseModal(idx) {
-    const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-    if (isNaN(idx) || !stored[idx]) {
+  function openEditCaseModal(item) {
+    if (!item) {
       showToast('请先选择要编辑的案例');
       return;
     }
-    editingCaseIndex = idx;
-    const item = stored[idx];
-
+    editingCaseId = item.id;
     const metaEl = document.getElementById('editCaseMetaSummary');
     const iptTitle = document.getElementById('iptEditCaseTitle');
     const iptQ = document.getElementById('iptEditCaseQuestion');
     const txtRemark = document.getElementById('txtEditCaseRemark');
-    const chkUpdate = document.getElementById('chkEditUpdatePan');
-
-    if (metaEl) {
-      const juStr = item.juDesc || (item.manualJu ? `${item.manualJu.dun}遁${['一','二','三','四','五','六','七','八','九'][item.manualJu.ju - 1]}局` : '');
-      const pillarsStr = item.pillars ? `${item.pillars.year} ${item.pillars.month} ${item.pillars.day} ${item.pillars.hour}` : (item.customPillars ? `${item.customPillars.year} ${item.customPillars.month} ${item.customPillars.day} ${item.customPillars.hour}` : '');
-      const dingjuName = item.dingjuMethod === 'zhirun' ? '置闰' : (item.dingjuMethod === 'chaibu' ? '拆补' : '茅山');
-      const paipanName = item.paipanMethod === 'zhuan' ? '转盘' : '飞盘';
-      metaEl.textContent = `原盘信息：${item.dateStr} ｜ ${[juStr, pillarsStr, `${dingjuName}/${paipanName}`].filter(Boolean).join(' ｜ ')}`;
-    }
-
+    if (metaEl) metaEl.textContent = `原盘信息（只读）：${item.dateStr} ｜ ${recordSummary(item)}`;
     if (iptTitle) iptTitle.value = item.title || '';
     if (iptQ) iptQ.value = item.userQuestion || item.title || '';
     if (txtRemark) txtRemark.value = item.remark || '';
-    if (chkUpdate) chkUpdate.checked = false;
-
     openModal('modalEditCase');
   }
 
-  // 点击「编辑」按钮
   const btnEdit = document.getElementById('btnEditCase');
-  if (btnEdit) {
-    btnEdit.addEventListener('click', () => {
-      const idx = parseInt(selCases.value);
-      openEditCaseModal(idx);
-    });
-  }
-
-  // 详情面板中的「编辑此案例」按钮
+  if (btnEdit) btnEdit.addEventListener('click', () => openEditCaseModal(selectedRecord()));
   const btnDetailEdit = document.getElementById('btnDetailEditCase');
-  if (btnDetailEdit) {
-    btnDetailEdit.addEventListener('click', () => {
-      const idx = parseInt(selCases.value);
-      openEditCaseModal(idx);
-    });
-  }
+  if (btnDetailEdit) btnDetailEdit.addEventListener('click', () => openEditCaseModal(selectedRecord()));
 
-  // 确认修改案例
+  // 确认修改：只改文字信息，盘面永远是起局时的原盘 (不再提供“用当前盘覆盖”)
   const btnConfirmEdit = document.getElementById('btnConfirmEditCase');
   if (btnConfirmEdit) {
     btnConfirmEdit.addEventListener('click', () => {
-      if (editingCaseIndex === null) return;
-      const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-      if (!stored[editingCaseIndex]) return;
-
-      const item = stored[editingCaseIndex];
+      if (!editingCaseId) return;
       const iptTitle = document.getElementById('iptEditCaseTitle');
       const iptQ = document.getElementById('iptEditCaseQuestion');
       const txtRemark = document.getElementById('txtEditCaseRemark');
-      const chkUpdate = document.getElementById('chkEditUpdatePan');
-
-      item.title = (iptTitle && iptTitle.value.trim()) || item.title || '奇门格局案例';
-      item.userQuestion = (iptQ && iptQ.value.trim()) || item.title;
-      item.remark = (txtRemark && txtRemark.value.trim()) || '';
-
-      if (chkUpdate && chkUpdate.checked) {
-        const curPan = state.currentPan;
-        item.dateStr = `${state.year}-${state.month}-${state.day} ${state.hour}:${state.minute}`;
-        item.year = state.year;
-        item.month = state.month;
-        item.day = state.day;
-        item.hour = state.hour;
-        item.minute = state.minute;
-        item.longitude = state.longitude;
-        item.cityName = state.cityName;
-        item.dingjuMethod = state.dingjuMethod;
-        item.paipanMethod = state.paipanMethod;
-        item.zishi = state.zishi;
-        item.manualJu = state.manualJu ? { ...state.manualJu } : null;
-        item.customPillars = state.customPillars ? { ...state.customPillars } : null;
-        item.pillars = (curPan && curPan.pillars) ? { ...curPan.pillars } : null;
-        item.juDesc = (curPan && curPan.dingju) ? curPan.dingju.desc : '';
-        item.selectedYongShen = Array.isArray(state.selectedYongShen) ? [...state.selectedYongShen] : ['值符'];
+      const item = updateRecord(editingCaseId, r => {
+        r.title = (iptTitle && iptTitle.value.trim()) || r.title || '奇门格局案例';
+        r.titleEdited = true;
+        r.userQuestion = (iptQ && iptQ.value.trim()) || r.title;
+        r.remark = (txtRemark && txtRemark.value.trim()) || '';
+      });
+      if (item && item.id === state.activeRecordId) {
+        state.userQuestion = item.userQuestion;
+        state.caseRemark = item.remark;
+        const txtUser = document.getElementById('txtUserRemark');
+        if (txtUser) txtUser.value = item.remark;
+        updateBoardCardCenter(state.currentPan);
       }
-
-      localStorage.setItem('qimen_saved_cases', JSON.stringify(stored));
       closeModal('modalEditCase');
-      loadCases(editingCaseIndex);
-      showToast(`案例【${item.title}】已成功更新！`);
+      loadCases(editingCaseId);
+      if (item) showToast(`案例【${item.title}】已更新`);
     });
   }
 
-  document.getElementById('btnDeleteCase').addEventListener('click', () => {
-    const idx = parseInt(selCases.value);
-    if (isNaN(idx)) {
+  const btnDelete = document.getElementById('btnDeleteCase');
+  if (btnDelete) btnDelete.addEventListener('click', () => {
+    const item = selectedRecord();
+    if (!item) {
       showToast('请先选择要删除的案例');
       return;
     }
-    const stored = JSON.parse(localStorage.getItem('qimen_saved_cases') || '[]');
-    stored.splice(idx, 1);
-    localStorage.setItem('qimen_saved_cases', JSON.stringify(stored));
-    loadCases(idx > 0 ? idx - 1 : 0);
+    const name = item.title || item.userQuestion || item.dateStr;
+    if (!window.confirm(`确定永久删除案例【${name}】吗？\n\n删除后盘面快照、断事笔记与反馈都将被彻底移除且无法恢复。`)) return;
+    deleteRecord(item.id);
+    if (item.id === state.activeRecordId) {
+      state.isPendingReveal = false;
+      applyPendingVisualMasks(false);
+      setActiveRecord(null);
+      executePaipan();
+    }
+    loadCases();
+    renderDueBanner();
     showToast('案例已删除');
   });
 
+  const btnVoid = document.getElementById('btnVoidCase');
+  if (btnVoid) btnVoid.addEventListener('click', () => {
+    const item = selectedRecord();
+    if (!item) return;
+    if (item.status === 'void') {
+      updateRecord(item.id, r => {
+        r.status = r.revealedAt ? 'revealed' : 'pending';
+        r.voidReason = '';
+      });
+      showToast('已恢复此局');
+    } else {
+      updateRecord(item.id, r => {
+        r.status = 'void';
+        r.voidReason = r.voidReason || '起盘后觉得时间不对或问题不清，此盘不看';
+      });
+      if (item.id === state.activeRecordId) releaseLock('keep');
+      showToast('已标记作废：这一局保留在库中，但不再参与回访');
+    }
+    loadCases(item.id);
+    renderDueBanner();
+  });
+
+  const btnDetailNotes = document.getElementById('btnDetailNotes');
+  if (btnDetailNotes) btnDetailNotes.addEventListener('click', () => {
+    const item = selectedRecord();
+    if (item) openCaseNotesModal(item.id);
+  });
+
+  // 导出 / 导入备份 (localStorage 清缓存即丢失，建议定期导出)
+  const btnExport = document.getElementById('btnExportCases');
+  if (btnExport) btnExport.addEventListener('click', () => {
+    flushRecordAutosave();
+    const json = exportRecordsJson();
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `qimen-cases-${todayStr().replace(/-/g, '')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+    showToast(`已导出 ${loadRecords().length} 条案例`);
+  });
+
+  const btnImport = document.getElementById('btnImportCases');
+  const fileImport = document.getElementById('fileImportCases');
+  if (btnImport && fileImport) {
+    btnImport.addEventListener('click', () => fileImport.click());
+    fileImport.addEventListener('change', () => {
+      const file = fileImport.files && fileImport.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const res = importRecordsJson(String(reader.result || ''));
+          loadCases();
+          renderDueBanner();
+          showToast(`导入完成：新增 ${res.added} 条，更新 ${res.updated} 条，共 ${res.total} 条`);
+        } catch (err) {
+          showToast('导入失败：' + err.message);
+        }
+        fileImport.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
+
   loadCases();
 }
+
+// 案例库上方的待回访提醒条
+function renderDueBanner() {
+  const el = document.getElementById('caseDueBanner');
+  if (!el) return;
+  const due = dueFollowUps();
+  if (!due.length) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const first = due[0];
+  el.style.display = 'flex';
+  el.innerHTML = `<span>🔔 ${due.length} 条待回访 · ${escapeHtml(first.f.label)}【${escapeHtml(first.rec.userQuestion || first.rec.title || first.rec.dateStr)}】</span><button type="button" class="m3-btn m3-btn-tonal" id="btnOpenDueNotes">去回访</button>`;
+  const btn = document.getElementById('btnOpenDueNotes');
+  if (btn) btn.addEventListener('click', () => openCaseNotesModal(first.rec.id));
+}
+
 
 // 10. 实时时钟走时
 function initLiveClock() {
@@ -3371,10 +5060,13 @@ function checkPalaceMatchYongShen(pan, g, yongShenList) {
   const yearGan = pan.pillars && pan.pillars.year ? pan.pillars.year[0] : '';
   const monthGan = pan.pillars && pan.pillars.month ? pan.pillars.month[0] : '';
   const heGan = HE_GAN_MAP[dayGan] || '';
+  const keGan = KE_GAN_MAP ? (KE_GAN_MAP[dayGan] || '') : '';
+  const beiKeGan = BEI_KE_GAN_MAP ? (BEI_KE_GAN_MAP[dayGan] || '') : '';
 
   const matchedItems = [];
 
-  for (const ys of yongShenList) {
+  for (const rawYs of yongShenList) {
+    const ys = (typeof rawYs === 'object' && rawYs !== null) ? (rawYs.name || '') : String(rawYs);
     let hit = false;
     if (ys === '日干') {
       if (tg === dayGan || tj === dayGan) hit = true;
@@ -3384,8 +5076,24 @@ function checkPalaceMatchYongShen(pan, g, yongShenList) {
       if (tg === yearGan || tj === yearGan) hit = true;
     } else if (ys === '月干') {
       if (tg === monthGan || tj === monthGan) hit = true;
-    } else if (ys === '合干') {
+    } else if (ys === '合干' || ys === '相合之干') {
       if (heGan && (tg === heGan || tj === heGan)) hit = true;
+    } else if (ys === '所克之干' || ys === '我克之干') {
+      if (keGan && (tg === keGan || tj === keGan)) hit = true;
+    } else if (ys === '克我之干') {
+      if (beiKeGan && (tg === beiKeGan || tj === beiKeGan)) hit = true;
+    } else if (BAGUA_GONG_MAP && BAGUA_GONG_MAP[ys] === g) {
+      hit = true;
+    } else if (ys === '对冲宫' || ys === '日干对冲宫' || ys === '对冲') {
+      let dayG = 0;
+      for (let dg = 1; dg <= 9; dg++) {
+        if (pan.tianpanGan && (pan.tianpanGan[dg] === dayGan || (pan.tianpanJigan && pan.tianpanJigan[dg] === dayGan))) {
+          dayG = dg;
+          break;
+        }
+      }
+      const OPPOSITE_GONG = { 1: 9, 9: 1, 2: 8, 8: 2, 3: 7, 7: 3, 4: 6, 6: 4 };
+      if (dayG && OPPOSITE_GONG[dayG] === g) hit = true;
     } else if (['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'].includes(ys)) {
       if (tg === ys || tj === ys) hit = true;
     } else if (ys === '值符' || ys === '直符') {
@@ -3394,6 +5102,7 @@ function checkPalaceMatchYongShen(pan, g, yongShenList) {
       if (spirit === ys) hit = true;
     } else if (['天蓬', '天芮', '天冲', '天辅', '天禽', '天心', '天柱', '天任', '天英'].includes(ys) || ys.startsWith('天')) {
       if (star.includes(ys)) hit = true;
+      if (g === 2 && ys === '天禽' && star.includes('天芮')) hit = true;
     } else if (['休门', '生门', '伤门', '杜门', '景门', '死门', '惊门', '开门'].includes(ys) || ys.endsWith('门')) {
       if (door === ys || door.includes(ys.replace('门', ''))) hit = true;
     } else if (ys === '马星') {
@@ -3497,107 +5206,493 @@ function initYongShenModal() {
   const boardCenter = document.getElementById('boardCardCenter');
   const iptQuestion = document.getElementById('iptUserQuestion');
   const btnClearQ = document.getElementById('btnClearUserQuestion');
+  const txtUserRemark = document.getElementById('txtUserRemark');
+  const btnClearUserRemark = document.getElementById('btnClearUserRemark');
   const btnClearAllYS = document.getElementById('btnClearAllYongShen');
   const btnResetYS = document.getElementById('btnResetYongShen');
   const btnConfirmYS = document.getElementById('btnConfirmYongShen');
   const tagsContainer = document.getElementById('yongshenSelectedContainer');
+  const presetsContainer = document.getElementById('ysPresetsContainer');
+  const promptBar = document.getElementById('ysPromptBar');
+  const categoryTabs = document.getElementById('ysCategoryTabs');
+  const genderChips = document.getElementById('ysGenderChips');
 
-  function getSelectedYongShenFromUI() {
-    const checked = Array.from(document.querySelectorAll('#modalYongShen .ys-chips-row input[type="checkbox"]:checked'));
-    return checked.map(cb => cb.value);
-  }
+  // 当前选中的用神对象结构集合: Map<name, { name, nature: 'person'|'matter'|'object', role: string }>
+  let selectedYongShenMap = new Map();
+  let currentPresetCategory = 'all';
 
-  function renderSelectedTags(selectedList) {
+  const NATURE_INFO = {
+    'person': { next: 'matter', text: '人', class: 'nature-person', desc: '人物类(逢空看对宫)' },
+    'matter': { next: 'object', text: '事', class: 'nature-matter', desc: '事情类(逢空不看对面)' },
+    'object': { next: 'person', text: '物', class: 'nature-object', desc: '物品类(逢空主虚设不在)' }
+  };
+
+  // 渲染已选用神标签列表
+  function renderSelectedTags() {
     if (!tagsContainer) return;
-    if (!selectedList || selectedList.length === 0) {
+    if (selectedYongShenMap.size === 0) {
       tagsContainer.innerHTML = '<span class="yongshen-empty-hint" style="font-size: 12.5px; color: var(--md-sys-color-outline);">尚未选取用神（可点击上方快捷预设或下方各分类要素勾选）</span>';
       return;
     }
-    tagsContainer.innerHTML = selectedList.map(item => {
-      const isZhifu = item === '值符' || item === '直符';
+
+    const items = Array.from(selectedYongShenMap.values());
+    tagsContainer.innerHTML = items.map(item => {
+      const isZhifu = item.name === '值符' || item.name === '直符';
+      const nat = item.nature || getYongShenNature(item.name);
+      const natConfig = NATURE_INFO[nat] || NATURE_INFO.matter;
+
       return `
-        <span class="yongshen-tag-pill ${isZhifu ? 'tag-zhifu' : ''}" data-val="${escapeHtml(item)}">
-          <span>${escapeHtml(item)}</span>
-          <span class="remove-btn" title="移除此用神" data-remove="${escapeHtml(item)}">✕</span>
+        <span class="yongshen-tag-pill ${isZhifu ? 'tag-zhifu' : ''}" data-val="${escapeHtml(item.name)}">
+          <span>${escapeHtml(item.name)}</span>
+          <span class="ys-nature-tag ${natConfig.class}" title="性质: ${natConfig.desc} (点击切换人/事/物)" data-nature-toggle="${escapeHtml(item.name)}">[${natConfig.text}]</span>
+          <span class="remove-btn" title="移除此用神" data-remove="${escapeHtml(item.name)}">✕</span>
         </span>
       `;
     }).join('');
 
+    // 点击切换性质 (人 -> 事 -> 物 -> 人)
+    tagsContainer.querySelectorAll('[data-nature-toggle]').forEach(badge => {
+      badge.addEventListener('click', e => {
+        e.stopPropagation();
+        const val = badge.dataset.natureToggle;
+        const item = selectedYongShenMap.get(val);
+        if (item) {
+          const curNat = item.nature || getYongShenNature(item.name);
+          const nextNat = (NATURE_INFO[curNat] || NATURE_INFO.matter).next;
+          item.nature = nextNat;
+          state.selectedYongShenNatures[val] = nextNat;
+          renderSelectedTags();
+        }
+      });
+    });
+
+    // 移除单个用神
     tagsContainer.querySelectorAll('[data-remove]').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const val = btn.dataset.remove;
+        selectedYongShenMap.delete(val);
+        delete state.selectedYongShenNatures[val];
+
+        // 同步取消底部 Checkbox 勾选
         const cb = document.querySelector(`#modalYongShen .ys-chips-row input[type="checkbox"][value="${val}"]`);
         if (cb) {
           cb.checked = false;
           const chip = cb.closest('.ys-chip');
           if (chip) chip.classList.remove('active');
         }
-        renderSelectedTags(getSelectedYongShenFromUI());
+
+        renderSelectedTags();
+      });
+    });
+
+    if (typeof updateStandardTabsBadge === 'function') {
+      updateStandardTabsBadge();
+    }
+  }
+
+  // 批量设置用神项到 UI
+  function applyYongShenList(itemsList, questionText = null) {
+    if (questionText && iptQuestion) {
+      iptQuestion.value = questionText;
+      state.userQuestion = questionText;
+      scheduleRecordAutosave();
+    }
+
+    itemsList.forEach(it => {
+      const name = typeof it === 'string' ? it : it.name;
+      const nature = (typeof it === 'object' && it.nature) ? it.nature : (state.selectedYongShenNatures[name] || getYongShenNature(name));
+      const role = (typeof it === 'object' && it.role) ? it.role : '';
+      selectedYongShenMap.set(name, { name, nature, role });
+      state.selectedYongShenNatures[name] = nature;
+
+      // 同步高亮底部 Checkbox
+      const cb = document.querySelector(`#modalYongShen .ys-chips-row input[type="checkbox"][value="${name}"]`);
+      if (cb) {
+        cb.checked = true;
+        const chip = cb.closest('.ys-chip');
+        if (chip) chip.classList.add('active');
+      }
+    });
+
+    renderSelectedTags();
+  }
+
+  // 渲染快捷预设列表
+  function renderPresetsUI() {
+    if (!presetsContainer) return;
+    const list = currentPresetCategory === 'all'
+      ? YONGSHEN_PRESETS
+      : YONGSHEN_PRESETS.filter(p => p.category === currentPresetCategory);
+
+    presetsContainer.innerHTML = list.map(p => {
+      const hasPrompt = !!p.prompt;
+      return `
+        <button type="button" class="yongshen-qchip ${hasPrompt ? 'has-prompt' : ''}" data-preset-id="${p.id}" title="${p.hint || p.question}">
+          <span class="qchip-name">${escapeHtml(p.name)}</span>
+        </button>
+      `;
+    }).join('');
+
+    // 点击预设处理
+    presetsContainer.querySelectorAll('.yongshen-qchip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pId = btn.dataset.presetId;
+        const preset = YONGSHEN_PRESETS.find(x => x.id === pId);
+        if (!preset) return;
+
+        presetsContainer.querySelectorAll('.yongshen-qchip').forEach(b => b.classList.remove('is-active-preset'));
+        btn.classList.add('is-active-preset');
+
+        if (preset.prompt) {
+          showPresetPrompt(preset);
+        } else {
+          hidePresetPrompt();
+          // 无追问预设：若开启了风水宫身份且问人生事业，自动带上风水宫
+          let finalItems = [...preset.items];
+          if (state.userGenderRole && state.userGenderRole !== 'none') {
+            const GENDER_MAP = {
+              'male': { name: '乾宫', nature: 'person', role: '求测人男风水位' },
+              'female': { name: '坤宫', nature: 'person', role: '求测人女风水位' },
+              'son': { name: '震宫', nature: 'person', role: '长子风水位' },
+              'daughter': { name: '巽宫', nature: 'person', role: '长女风水位' }
+            };
+            const fg = GENDER_MAP[state.userGenderRole];
+            if (fg && !finalItems.some(x => (x.name || x) === fg.name)) {
+              finalItems.push(fg);
+            }
+          }
+          applyYongShenList(finalItems, preset.question);
+          if (preset.hint) {
+            showToast(preset.hint);
+          }
+        }
       });
     });
   }
 
+  // 展开追问参数栏
+  function showPresetPrompt(preset) {
+    if (!promptBar) return;
+    const pmt = preset.prompt;
+    promptBar.style.display = 'block';
+
+    // 变动出行 8 方位追问
+    if (pmt.type === 'direction_8') {
+      const dayGan = state.currentPan && state.currentPan.dayGan ? state.currentPan.dayGan : '丙';
+      let html = `
+        <div class="ys-prompt-title">${escapeHtml(pmt.title)}</div>
+        <div class="ys-prompt-options">
+      `;
+      DIRECTION_OPTIONS.forEach(opt => {
+        const isMu = opt.muGan.includes(dayGan);
+        html += `
+          <button type="button" class="ys-prompt-btn" data-dir="${opt.dir}" data-gong="${opt.gongName}" data-ismu="${isMu ? '1' : '0'}">
+            <b>${opt.dir}</b> (${opt.gongName})${isMu ? ' <span style="color:#ef4444;font-size:11px;font-weight:bold;">[入墓]</span>' : ''}
+          </button>
+        `;
+      });
+      html += `</div><div id="ysPromptAlertArea"></div>`;
+      promptBar.innerHTML = html;
+
+      promptBar.querySelectorAll('.ys-prompt-btn').forEach(b => {
+        b.addEventListener('click', () => {
+          promptBar.querySelectorAll('.ys-prompt-btn').forEach(x => x.style.borderColor = 'var(--md-sys-color-outline-variant)');
+          b.style.borderColor = 'var(--md-sys-color-primary)';
+          const dir = b.dataset.dir;
+          const gongName = b.dataset.gong;
+          const isMu = b.dataset.ismu === '1';
+
+          const qText = pmt.questionPrefix.replace('{dir}', dir);
+          const finalItems = [
+            ...pmt.items,
+            { name: gongName, nature: 'object', role: `${dir}方目的地` }
+          ];
+
+          applyYongShenList(finalItems, qText);
+
+          const alertArea = document.getElementById('ysPromptAlertArea');
+          if (alertArea) {
+            if (isMu) {
+              alertArea.innerHTML = `<div class="ys-prompt-alert">提示：日干【${dayGan}】在${dir}方(${gongName})入墓！叶鸿生断法提示出行吉事受困，若非十万火急宜改日出门。</div>`;
+            } else {
+              alertArea.innerHTML = `<div class="ys-prompt-hint">已锁定出行方向：${dir}方 (${gongName})，日干得气，可详研落宫星门克应。</div>`;
+            }
+          }
+        });
+      });
+      return;
+    }
+
+    // 常规选项追问
+    let html = `
+      <div class="ys-prompt-title">${escapeHtml(pmt.title)}</div>
+      <div class="ys-prompt-options">
+    `;
+    pmt.options.forEach((opt, idx) => {
+      html += `
+        <button type="button" class="ys-prompt-btn" data-opt-idx="${idx}">
+          <div style="font-weight:700;">${escapeHtml(opt.label)}</div>
+          <div style="font-size:11px; color:var(--md-sys-color-outline); margin-top:2px;">${escapeHtml(opt.desc)}</div>
+        </button>
+      `;
+    });
+    html += `</div><div id="ysPromptAlertArea"></div>`;
+    promptBar.innerHTML = html;
+
+    promptBar.querySelectorAll('.ys-prompt-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        promptBar.querySelectorAll('.ys-prompt-btn').forEach(x => x.style.borderColor = 'var(--md-sys-color-outline-variant)');
+        b.style.borderColor = 'var(--md-sys-color-primary)';
+
+        const idx = parseInt(b.dataset.optIdx);
+        const opt = pmt.options[idx];
+        if (!opt) return;
+
+        let finalItems = JSON.parse(JSON.stringify(opt.items));
+        const dayGan = state.currentPan && state.currentPan.dayGan ? state.currentPan.dayGan : '丙';
+        const yearGan = state.currentPan && state.currentPan.pillars?.year ? state.currentPan.pillars.year[0] : '戊';
+
+        // 智能代入推导干
+        finalItems.forEach(it => {
+          if (it.name === '所克之干') {
+            const kg = (KE_GAN_MAP && KE_GAN_MAP[dayGan]) || '庚';
+            it.name = kg;
+            it.role = `被告(${kg})`;
+          } else if (it.name === '克我之干') {
+            const bkg = (BEI_KE_GAN_MAP && BEI_KE_GAN_MAP[dayGan]) || '庚';
+            it.name = bkg;
+            it.role = `原告(${bkg})`;
+          } else if (it.name === '合干' && preset.id === 'parents') {
+            const yhe = (HE_GAN_MAP && HE_GAN_MAP[yearGan]) || '癸';
+            it.name = yhe;
+            it.role = `母亲(${yhe})`;
+          }
+        });
+
+        // 检查全局风水宫身份
+        if (state.userGenderRole && state.userGenderRole !== 'none') {
+          const GENDER_MAP = {
+            'male': { name: '乾宫', nature: 'person', role: '求测人男风水位' },
+            'female': { name: '坤宫', nature: 'person', role: '求测人女风水位' },
+            'son': { name: '震宫', nature: 'person', role: '长子风水位' },
+            'daughter': { name: '巽宫', nature: 'person', role: '长女风水位' }
+          };
+          const fg = GENDER_MAP[state.userGenderRole];
+          if (fg && !finalItems.some(x => x.name === fg.name)) {
+            finalItems.push(fg);
+          }
+        }
+
+        applyYongShenList(finalItems, opt.question);
+
+        const alertArea = document.getElementById('ysPromptAlertArea');
+        if (alertArea && preset.hint) {
+          alertArea.innerHTML = `<div class="ys-prompt-hint">${escapeHtml(preset.hint)}</div>`;
+        }
+      });
+    });
+  }
+
+  function hidePresetPrompt() {
+    if (promptBar) {
+      promptBar.style.display = 'none';
+      promptBar.innerHTML = '';
+    }
+  }
+
+  // 绑定预设分类选项卡切换
+  if (categoryTabs) {
+    categoryTabs.querySelectorAll('.ys-cat-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        categoryTabs.querySelectorAll('.ys-cat-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentPresetCategory = tab.dataset.cat;
+        hidePresetPrompt();
+        renderPresetsUI();
+      });
+    });
+  }
+
+  // 绑定固定用神标准分类选项卡 (四柱核心、八门、八神、九星、十干像意、特殊用神)
+  const standardCategoryTabs = document.getElementById('ysStandardCategoryTabs');
+
+  function updateStandardTabsBadge() {
+    if (!standardCategoryTabs) return;
+    standardCategoryTabs.querySelectorAll('.ys-cat-tab').forEach(tab => {
+      const grp = tab.dataset.group;
+      const box = document.querySelector(`#modalYongShen .ys-standard-group-box[data-group="${grp}"]`);
+      if (!box) return;
+      const count = box.querySelectorAll('input[type="checkbox"]:checked').length;
+      const baseName = tab.dataset.baseName || tab.textContent.replace(/\s*\d+$/, '').replace(/\s*\(\d+\)$/, '').trim();
+      tab.dataset.baseName = baseName;
+      if (count > 0) {
+        tab.innerHTML = `${baseName}<span class="ys-cat-tab-badge">${count}</span>`;
+      } else {
+        tab.innerHTML = baseName;
+      }
+    });
+  }
+
+  if (standardCategoryTabs) {
+    standardCategoryTabs.querySelectorAll('.ys-cat-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        standardCategoryTabs.querySelectorAll('.ys-cat-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const targetGroup = tab.dataset.group;
+        document.querySelectorAll('#modalYongShen .ys-standard-group-box').forEach(box => {
+          box.style.display = (box.dataset.group === targetGroup) ? 'block' : 'none';
+        });
+      });
+    });
+  }
+
+  // 绑定求测人风水宫 / 性别身份切换
+  if (genderChips) {
+    genderChips.querySelectorAll('.ys-gender-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        genderChips.querySelectorAll('.ys-gender-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.userGenderRole = btn.dataset.gender || 'none';
+        try {
+          localStorage.setItem('qimen_user_gender_role', state.userGenderRole);
+        } catch (e) {}
+
+        const gong = btn.dataset.gong;
+        if (gong) {
+          showToast(`已选定风水宫身份：${btn.textContent.trim()}，问测人生时将自动兼顾【${gong}】`);
+        } else {
+          showToast('已设为不限风水宫身份');
+        }
+      });
+    });
+  }
+
+  // 初始化预设区域
+  renderPresetsUI();
+
+  // 从当前全局状态同步到弹窗
   function syncUIFromState() {
     if (iptQuestion) iptQuestion.value = state.userQuestion || '';
+    if (txtUserRemark) txtUserRemark.value = state.caseRemark || '';
+
+    // 同步风水宫身份激活态
+    if (genderChips) {
+      const curGender = state.userGenderRole || 'none';
+      genderChips.querySelectorAll('.ys-gender-chip').forEach(b => {
+        b.classList.toggle('active', b.dataset.gender === curGender);
+      });
+    }
+
+    // 重构已选用神结构字典
+    selectedYongShenMap.clear();
     const currentList = Array.isArray(state.selectedYongShen) ? state.selectedYongShen : [];
+    currentList.forEach(name => {
+      const nat = state.selectedYongShenNatures[name] || getYongShenNature(name);
+      selectedYongShenMap.set(name, { name, nature: nat, role: '' });
+    });
+
+    // 同步底部 Checkbox
     document.querySelectorAll('#modalYongShen .ys-chips-row input[type="checkbox"]').forEach(cb => {
-      const isChecked = currentList.includes(cb.value);
+      const isChecked = selectedYongShenMap.has(cb.value);
       cb.checked = isChecked;
       const chip = cb.closest('.ys-chip');
       if (chip) chip.classList.toggle('active', isChecked);
     });
-    renderSelectedTags(currentList);
-    const curNature = state.yongshenNature || 'auto';
-    const curRad = document.querySelector(`#modalYongShen input[name="radKongOpposite"][value="${curNature}"]`);
-    if (curRad) curRad.checked = true;
+
+    hidePresetPrompt();
+    renderSelectedTags();
+    if (typeof updateStandardTabsBadge === 'function') updateStandardTabsBadge();
   }
 
-  function openYSModal() {
+  function openYSModal(isFromCast = false) {
     syncUIFromState();
+    const banner = document.getElementById('yongshenCastBanner');
+    const bannerTime = document.getElementById('txtCastBannerTime');
+    const btnConfirm = document.getElementById('btnConfirmYongShen');
+
+    if (isFromCast || state.isPendingReveal) {
+      if (banner) banner.style.display = 'flex';
+      if (bannerTime) {
+        bannerTime.textContent = `${state.year}年${String(state.month).padStart(2, '0')}月${String(state.day).padStart(2, '0')}日 ${String(state.hour).padStart(2, '0')}:${String(state.minute).padStart(2, '0')}`;
+      }
+      if (btnConfirm) btnConfirm.textContent = '确定用神并揭盘';
+    } else {
+      if (banner) banner.style.display = 'none';
+      if (btnConfirm) btnConfirm.textContent = '确定';
+    }
+
     openModal('modalYongShen');
   }
 
+  // 暴露给起盘控制器
+  openYSModalHandler = openYSModal;
+
   if (btnSelectYongShen) {
-    btnSelectYongShen.addEventListener('click', openYSModal);
+    btnSelectYongShen.addEventListener('click', () => openYSModal(false));
   }
   if (boardCenter) {
-    boardCenter.addEventListener('click', openYSModal);
+    boardCenter.addEventListener('click', () => openYSModal(false));
   }
 
-  // 快捷问题预设按钮: 不改变上方文字，支持叠加勾选
-  document.querySelectorAll('.yongshen-qchip').forEach(qBtn => {
-    qBtn.addEventListener('click', () => {
-      // 保留上方输入框原有文字，不作替换覆盖
-      if (qBtn.dataset.ys) {
-        const ysArr = qBtn.dataset.ys.split(',').map(s => s.trim());
-        ysArr.forEach(ys => {
-          const cb = document.querySelector(`#modalYongShen .ys-chips-row input[type="checkbox"][value="${ys}"]`);
-          if (cb) {
-            cb.checked = true;
-            const chip = cb.closest('.ys-chip');
-            if (chip) chip.classList.add('active');
-          }
-        });
-        renderSelectedTags(getSelectedYongShenFromUI());
+  // 遮罩层上的按钮绑定
+  const btnOverlayPick = document.getElementById('btnOverlayPickYongShen');
+  if (btnOverlayPick) {
+    btnOverlayPick.addEventListener('click', () => openYSModal(true));
+  }
+  const btnOverlayReveal = document.getElementById('btnOverlayDirectReveal');
+  if (btnOverlayReveal) {
+    btnOverlayReveal.addEventListener('click', () => revealPanNow());
+  }
 
-        // 智能联动判定人/物属性
-        const qText = qBtn.dataset.q || '';
-        const pKeywords = ['自身', '恋爱', '婚姻', '夫妻', '领导', '贵人', '疾病', '防贼', '求财', '资金', '利润', '子女', '下属', '失物'];
-        if (pKeywords.some(k => qText.includes(k))) {
-          const radP = document.querySelector('#modalYongShen input[name="radKongOpposite"][value="person_object"]');
-          if (radP) radP.checked = true;
-        }
-      }
+  // 断事笔记输入监听与实时同步
+  if (txtUserRemark) {
+    txtUserRemark.addEventListener('input', () => {
+      state.caseRemark = txtUserRemark.value.trim();
+      const txtCase = document.getElementById('txtCaseRemark');
+      if (txtCase) txtCase.value = state.caseRemark;
+      try { localStorage.setItem('qimen_case_remark', state.caseRemark); } catch (e) {}
+      scheduleRecordAutosave();
     });
-  });
+  }
+
+  if (btnClearUserRemark) {
+    btnClearUserRemark.addEventListener('click', () => {
+      if (txtUserRemark && txtUserRemark.value.trim() && !window.confirm('确定清空这条断事笔记吗？')) return;
+      if (txtUserRemark) txtUserRemark.value = '';
+      setTimeout(scheduleRecordAutosave, 0);
+      state.caseRemark = '';
+      const txtCase = document.getElementById('txtCaseRemark');
+      if (txtCase) txtCase.value = '';
+      try {
+        localStorage.removeItem('qimen_case_remark');
+      } catch (e) {}
+    });
+  }
+
+  // 问题输入框监听
+  if (iptQuestion) {
+    iptQuestion.addEventListener('input', () => {
+      state.userQuestion = iptQuestion.value.trim();
+      try { localStorage.setItem('qimen_user_question', state.userQuestion); } catch (e) {}
+      scheduleRecordAutosave();
+    });
+  }
 
   // Checkbox 选择联动
   document.querySelectorAll('#modalYongShen .ys-chips-row input[type="checkbox"]').forEach(cb => {
     cb.addEventListener('change', () => {
       const chip = cb.closest('.ys-chip');
       if (chip) chip.classList.toggle('active', cb.checked);
-      renderSelectedTags(getSelectedYongShenFromUI());
+      const val = cb.value;
+      if (cb.checked) {
+        const nat = state.selectedYongShenNatures[val] || getYongShenNature(val);
+        selectedYongShenMap.set(val, { name: val, nature: nat, role: '' });
+      } else {
+        selectedYongShenMap.delete(val);
+      }
+      renderSelectedTags();
+      if (typeof updateStandardTabsBadge === 'function') updateStandardTabsBadge();
     });
   });
 
@@ -3605,54 +5700,105 @@ function initYongShenModal() {
   if (btnClearQ) {
     btnClearQ.addEventListener('click', () => {
       if (iptQuestion) iptQuestion.value = '';
+      state.userQuestion = '';
+      try {
+        localStorage.removeItem('qimen_user_question');
+      } catch (e) {}
+      scheduleRecordAutosave();
     });
   }
 
-  // 清空用神选择（排除值符，不对值符生效，除非用户手动取消）
+  // 清空用神选择
   function clearAllSelections(keepZhifu = true) {
+    selectedYongShenMap.clear();
     document.querySelectorAll('#modalYongShen .ys-chips-row input[type="checkbox"]').forEach(cb => {
       if (keepZhifu && (cb.value === '值符' || cb.value === '直符')) {
         cb.checked = true;
         const chip = cb.closest('.ys-chip');
         if (chip) chip.classList.add('active');
+        selectedYongShenMap.set(cb.value, { name: cb.value, nature: 'matter', role: '大局核心' });
       } else {
         cb.checked = false;
         const chip = cb.closest('.ys-chip');
         if (chip) chip.classList.remove('active');
       }
     });
-    renderSelectedTags(getSelectedYongShenFromUI());
+    hidePresetPrompt();
+    renderSelectedTags();
+    if (typeof updateStandardTabsBadge === 'function') updateStandardTabsBadge();
   }
 
   if (btnClearAllYS) btnClearAllYS.addEventListener('click', () => clearAllSelections(true));
   if (btnResetYS) btnResetYS.addEventListener('click', () => {
     clearAllSelections(true);
     if (iptQuestion) iptQuestion.value = '';
+    state.userQuestion = '';
+    try {
+      localStorage.removeItem('qimen_user_question');
+    } catch (e) {}
+    scheduleRecordAutosave();
   });
+
+// 首次选取用神后自动触发动态演盘
+function triggerAutoAnimOnFirstYongShen() {
+  if (!state.autoAnimOnYongshen) return;
+  if (state.hasAnimatedOnFirstYS) return;
+  if (!state.selectedYongShen || state.selectedYongShen.length === 0) return;
+  state.hasAnimatedOnFirstYS = true;
+
+  setTimeout(() => {
+    startBoardAnimation();
+  }, 350);
+}
 
   // 确认并应用用神
   if (btnConfirmYS) {
     btnConfirmYS.addEventListener('click', () => {
       state.userQuestion = iptQuestion ? iptQuestion.value.trim() : '';
-      state.selectedYongShen = getSelectedYongShenFromUI();
-      const checkedRad = document.querySelector('#modalYongShen input[name="radKongOpposite"]:checked');
-      if (checkedRad) {
-        state.yongshenNature = checkedRad.value;
+      if (txtUserRemark) {
+        state.caseRemark = txtUserRemark.value.trim();
       }
+      state.selectedYongShen = Array.from(selectedYongShenMap.keys());
+
+      // 同步保存各用神的 nature 字典
+      selectedYongShenMap.forEach((it, name) => {
+        state.selectedYongShenNatures[name] = it.nature;
+      });
+
       try {
         localStorage.setItem('qimen_user_question', state.userQuestion);
+        localStorage.setItem('qimen_case_remark', state.caseRemark);
         localStorage.setItem('qimen_selected_yongshen', JSON.stringify(state.selectedYongShen));
+        localStorage.setItem('qimen_selected_yongshen_natures', JSON.stringify(state.selectedYongShenNatures));
         localStorage.setItem('qimen_zhifu_manually_cleared', state.selectedYongShen.includes('值符') ? '0' : '1');
-        localStorage.setItem('qimen_yongshen_nature', state.yongshenNature);
       } catch (e) {
         console.warn('localStorage error', e);
       }
       closeModal('modalYongShen');
+
+      // 若处于立即起盘防剧透状态，确认后立即揭晓盘面
+      if (state.isPendingReveal) {
+        revealPanNow();
+        triggerAutoAnimOnFirstYongShen();
+        return;
+      }
+
+      // 已揭盘的起局记录：同步写回
+      if (state.activeRecordId) {
+        flushRecordAutosave();
+        updateRecord(state.activeRecordId, r => {
+          r.selectedYongShen = [...state.selectedYongShen];
+          r.yongshenNatures = { ...state.selectedYongShenNatures };
+        });
+        refreshCaseList(state.activeRecordId);
+      }
+
       updateBoardCardCenter(state.currentPan);
       if (state.currentPan) {
         state.currentPan.selectedYongShen = state.selectedYongShen;
+        state.currentPan.yongshenNatures = { ...state.selectedYongShenNatures };
         state.currentPan.userQuestion = state.userQuestion;
-        state.currentPan.yongshenNature = state.yongshenNature;
+        state.currentPan.remark = state.caseRemark;
         renderNinePalaces(state.currentPan);
         renderKeyingAnalysis(state.currentPan, state.selectedGong);
       }
@@ -3661,6 +5807,7 @@ function initYongShenModal() {
       } else {
         showToast('已更新所问事项，未选用神');
       }
+      triggerAutoAnimOnFirstYongShen();
     });
   }
 
@@ -3873,6 +6020,7 @@ function updateGridPickBarUI() {
 
 // 进入盘面圈选用神模式
 function enterGridPickingMode() {
+  if (blockIfPending('盘面圈选用神')) return;
   state.isGridPickingMode = true;
   const grid = document.getElementById('nineGrid');
   if (grid) grid.classList.add('grid-picking-mode');
@@ -3917,6 +6065,7 @@ function exitGridPickingMode(save = true) {
     updateBoardCardCenter(state.currentPan);
     if (state.selectedYongShen.length > 0) {
       showToast(`已完成用神圈选：【${state.selectedYongShen.join('、')}】`);
+      triggerAutoAnimOnFirstYongShen();
     } else {
       showToast('已退出圈选模式，未圈选用神');
     }
@@ -4133,6 +6282,7 @@ function renderPalacePickerBody(gong) {
 }
 
 function openPalaceElementPicker(gong) {
+  if (blockIfPending('宫位要素选取')) return;
   if (gong === 5 && state.currentPan && state.currentPan.paipanMethod === 'zhuan') {
     return;
   }
@@ -4650,6 +6800,7 @@ function initSettingsModal() {
 
   // 绑定设置弹窗内部的 Segmented Buttons
   bindSettingSeg('segSettingDingju', val => {
+    if (!guardPrefChange('dingjuMethod', val, '切换定局方式')) return;
     state.dingjuMethod = val;
     localStorage.setItem('qimen_dingju_method', val);
     syncMainSegmentGroup('segDingjuGroup', val);
@@ -4657,6 +6808,7 @@ function initSettingsModal() {
   });
 
   bindSettingSeg('segSettingPaipan', val => {
+    if (!guardPrefChange('paipanMethod', val, '切换排盘方式')) return;
     state.paipanMethod = val;
     localStorage.setItem('qimen_paipan_method', val);
     syncMainSegmentGroup('segPaipanGroup', val);
@@ -4664,6 +6816,7 @@ function initSettingsModal() {
   });
 
   bindSettingSeg('segSettingZishi', val => {
+    if (!guardPrefChange('zishi', val, '切换子时处理')) return;
     state.zishi = val;
     localStorage.setItem('qimen_zishi', val);
     syncMainSegmentGroup('segZishiGroup', val);
@@ -4685,8 +6838,9 @@ function initSettingsModal() {
 
   bindSettingSeg('segSettingDetail', val => {
     state.showKeyingDetails = val === '1';
+    state.palaceModeOverrides = {}; // 总开关切换时重置各宫单宫覆盖，最高控制权限生效
     localStorage.setItem('qimen_show_keying_details', val);
-    updateKeyingToggleBtn();
+    updateKeyingToggleBtn(state.showKeyingDetails);
     if (state.currentPan) renderKeyingAnalysis(state.currentPan, state.selectedGong);
   });
 
@@ -4705,6 +6859,16 @@ function initSettingsModal() {
       renderKeyingAnalysis(state.currentPan, state.selectedGong);
     }
   });
+
+  const chkAutoAnim = document.getElementById('chkSettingAutoAnimOnYongshen');
+  if (chkAutoAnim) {
+    chkAutoAnim.checked = state.autoAnimOnYongshen;
+    chkAutoAnim.addEventListener('change', e => {
+      state.autoAnimOnYongshen = e.target.checked;
+      localStorage.setItem('qimen_auto_anim_on_yongshen', state.autoAnimOnYongshen ? '1' : '0');
+      showToast(state.autoAnimOnYongshen ? '已开启：首次选取用神后自动开始动态演盘' : '已关闭：首次选取用神后自动演盘');
+    });
+  }
 
   const chkMask = document.getElementById('chkSettingMask');
   if (chkMask) {
@@ -4780,6 +6944,9 @@ function syncSettingsModal() {
   syncSegButtons('segSettingDipan', state.showDipan ? '1' : '0');
   // 同步旬空
   syncSegButtons('segSettingKong', state.kongLookOpposite ? '1' : '0');
+  // 同步动态演盘开关
+  const chkAutoAnim = document.getElementById('chkSettingAutoAnimOnYongshen');
+  if (chkAutoAnim) chkAutoAnim.checked = state.autoAnimOnYongshen;
   // 同步蒙版
   const chk = document.getElementById('chkSettingMask');
   if (chk) chk.checked = state.maskWeakened;
@@ -4826,7 +6993,8 @@ function resetSettingsToDefault() {
     'qimen_province', 'qimen_city', 'qimen_longitude',
     'qimen_theme', 'qimen_simple_mode', 'qimen_show_keying_details',
     'qimen_imagery_mode', 'qimen_show_dipan',
-    'qimen_mask_weakened', 'qimen_kong_look_opposite'
+    'qimen_mask_weakened', 'qimen_kong_look_opposite',
+    'qimen_auto_anim_on_yongshen'
   ].forEach(k => localStorage.removeItem(k));
 
   state.dingjuMethod = 'zhirun';
@@ -4837,9 +7005,11 @@ function resetSettingsToDefault() {
   state.longitude = 116.38;
   state.isSimpleMode = false;
   state.showKeyingDetails = true;
+  state.palaceModeOverrides = {};
   state.imageryMode = 'all';
   state.showDipan = false;
   state.maskWeakened = false;
+  state.autoAnimOnYongshen = false;
   state.kongLookOpposite = true;
 
   document.documentElement.setAttribute('data-theme', 'light');
@@ -4850,7 +7020,7 @@ function resetSettingsToDefault() {
   const chkDipan = document.getElementById('chkToggleDipan');
   if (chkDipan) chkDipan.checked = false;
 
-  updateKeyingToggleBtn();
+  updateKeyingToggleBtn(true);
   syncSettingsModal();
 
   // 同步主界面表单
@@ -4882,4 +7052,1578 @@ function resetSettingsToDefault() {
   showToast('已恢复出厂默认设置！');
 }
 
+// ========================================================
+// 结构化断事笔记与回访 (叶鸿生解盘九步 + 反馈验证闭环)
+// ========================================================
+let notesEditingId = null;
 
+function openCaseNotesModal(id) {
+  const targetId = id || state.activeRecordId;
+  if (!targetId) {
+    showToast('当前盘还不是一条记录：先“立即起盘”或“保存当前格局”，再写断事笔记');
+    return;
+  }
+  if (targetId === state.activeRecordId) flushRecordAutosave();
+  const rec = getRecord(targetId);
+  if (!rec) {
+    showToast('没有找到这条记录');
+    return;
+  }
+  notesEditingId = rec.id;
+  renderCaseNotesBody(rec);
+  openModal('modalCaseNotes');
+}
+
+function renderCaseNotesBody(rec) {
+  const body = document.getElementById('notesDialogBody');
+  const headline = document.getElementById('txtNotesHeadline');
+  if (headline) headline.textContent = `笔记回访 · ${rec.userQuestion || rec.title || rec.dateStr}`;
+  if (!body) return;
+
+  const n = rec.notes || {};
+  const ysReveal = Array.isArray(rec.ysAtReveal) && rec.ysAtReveal.length ? rec.ysAtReveal.join('、') : '—';
+  const titleVal = rec.title || '';
+  const questionVal = rec.userQuestion || '';
+
+  // 1. 提取并兼容历史笔记内容（绝不丢失任何老案例的历史细分数据）
+  const legacySections = [];
+  if (n.asker && n.asker.trim()) legacySections.push(`【求测人】${n.asker.trim()}`);
+  if (n.yongshenReason && n.yongshenReason.trim()) legacySections.push(`【用神理由】${n.yongshenReason.trim()}`);
+  if (n.readings && n.readings.trim()) legacySections.push(`【读象】\n${n.readings.trim()}`);
+  if (n.relations && n.relations.trim()) legacySections.push(`【对宫马星】${n.relations.trim()}`);
+  if (n.judgment && n.judgment.trim()) legacySections.push(`【综合判断】\n${n.judgment.trim()}`);
+  if (n.yunchou && n.yunchou.trim()) legacySections.push(`【运筹方案】\n${n.yunchou.trim()}`);
+
+  let mainContent = rec.remark || '';
+  if (legacySections.length) {
+    if (!mainContent.trim()) {
+      mainContent = legacySections.join('\n\n');
+    } else {
+      const missing = legacySections.filter(s => !mainContent.includes(s.slice(0, 8)));
+      if (missing.length) {
+        mainContent = mainContent.trim() + '\n\n' + missing.join('\n\n');
+      }
+    }
+  }
+
+  // 2. 应期内容
+  const yingqiText = n.yingqi || '';
+  const yingqiDate = n.yingqiDate || '';
+
+  // 3. 验断结论
+  const currentVerdict = rec.verdict || '待验证';
+
+  // 4. 反馈历史列表
+  const fbList = (rec.feedback || []).map((x, i) => `
+    <li class="notes-feedback-item">
+      <span class="notes-fb-date">${escapeHtml(x.date || '')}</span>
+      <span class="notes-fb-verdict">${escapeHtml(x.verdict || '待验证')}</span>
+      <span class="notes-fb-text">${escapeHtml(x.text || '')}</span>
+      <button type="button" class="m3-btn-subtle notes-fb-del" data-fb-del="${i}" title="删除这条反馈">✕</button>
+    </li>`).join('');
+
+  body.innerHTML = `
+    <div class="notes-meta">
+      <div><strong>${escapeHtml(rec.dateStr || '')}</strong> ｜ ${escapeHtml(recordSummary(rec))}</div>
+      <div style="margin-top: 3px;">揭盘时用神：<strong>${escapeHtml(ysReveal)}</strong></div>
+    </div>
+
+    <!-- 案例标题与所问问题编辑区 (整合原“编辑此案例”功能) -->
+    <div class="notes-case-header-edit">
+      <label class="notes-inline-field">
+        <span class="notes-sub-label">案例标题 / 占事简注</span>
+        <input type="text" class="m3-input" id="notesCaseTitle" placeholder="例如：测工作事业与公司" value="${escapeHtml(titleVal)}">
+      </label>
+      <label class="notes-inline-field">
+        <span class="notes-sub-label">所问事项 / 具体问题</span>
+        <input type="text" class="m3-input" id="notesCaseQuestion" placeholder="记录求测人具体提问事项..." value="${escapeHtml(questionVal)}">
+      </label>
+    </div>
+
+    <!-- 核心块 1：断事笔记（主断语 & 象意分析） -->
+    <div class="notes-field">
+      <div class="notes-field-header">
+        <div class="notes-field-label">
+          <strong>断事笔记</strong>
+          <span>断语推断、逐宫象意与综合判断</span>
+        </div>
+        <button type="button" class="m3-btn m3-btn-tonal notes-btn-insert-inline" id="btnNotesInsertInline" title="在光标处插入用神宫要素">
+          + 插入用神宫要素
+        </button>
+      </div>
+      <textarea class="m3-input notes-main-textarea" id="notesMainContent" rows="7" placeholder="在此记录核心断语、分析过程与象意推导...&#10;（提示：可随时点击【+ 插入用神宫要素】快捷导入落宫象意）">${escapeHtml(mainContent)}</textarea>
+    </div>
+
+    <!-- 核心块 2：定应期（单行紧凑卡片） -->
+    <div class="notes-timing-card">
+      <div class="notes-field-label">
+        <strong>定应期</strong>
+        <span>推断应期时段及对应日期</span>
+      </div>
+      <div class="notes-timing-inputs">
+        <input type="text" class="m3-input" id="notesField_yingqi" style="flex: 1; min-width: 140px; height: 34px; font-size: 13px;" placeholder="例如：申月填实 / 丙日冲动..." value="${escapeHtml(yingqiText)}">
+        <label class="notes-date-pill">
+          <span>预计日期</span>
+          <input type="date" class="m3-input" id="notesDate_yingqi" value="${escapeHtml(yingqiDate)}">
+        </label>
+      </div>
+    </div>
+
+    <!-- 核心块 3：验断与实际结果 -->
+    <div class="notes-verification-card">
+      <div class="notes-verdict-bar">
+        <span class="notes-sub-label"><strong>验断结论：</strong></span>
+        <div class="notes-verdict-segmented" id="notesVerdictSegmented">
+          ${VERDICTS.map(v => `
+            <button type="button" class="notes-verdict-btn ${currentVerdict === v ? 'active' : ''}" data-verdict="${v}">${v}</button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="notes-feedback-quick">
+        <div class="notes-feedback-input-row">
+          <input type="text" class="m3-input" id="notesFeedbackText" placeholder="记录实际发生的情况或验断细节...">
+          <button type="button" class="m3-btn m3-btn-tonal" id="btnNotesAddFeedback" style="height: 36px; white-space: nowrap;">记录反馈</button>
+        </div>
+      </div>
+
+      ${fbList ? `<ul class="notes-feedback-list">${fbList}</ul>` : ''}
+    </div>
+  `;
+
+  // 绑定验断结论胶囊按钮点选
+  const segButtons = body.querySelectorAll('.notes-verdict-btn');
+  segButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      segButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // 绑定内联【+ 插入用神宫要素】
+  const btnInlineInsert = document.getElementById('btnNotesInsertInline');
+  if (btnInlineInsert) {
+    btnInlineInsert.addEventListener('click', insertYongShenPalacesIntoNotes);
+  }
+
+  // 绑定添加反馈
+  const btnAdd = document.getElementById('btnNotesAddFeedback');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', () => {
+      const txt = document.getElementById('notesFeedbackText');
+      const text = txt ? txt.value.trim() : '';
+      if (!text) {
+        showToast('先写下实际情况再记录');
+        return;
+      }
+      const activeBtn = body.querySelector('.notes-verdict-btn.active');
+      const curVerdict = activeBtn ? activeBtn.dataset.verdict : '待验证';
+
+      saveCaseNotesForm(false);
+      const updated = updateRecord(notesEditingId, r => {
+        r.feedback = r.feedback || [];
+        r.feedback.push({ at: new Date().toISOString(), date: todayStr(), text, verdict: curVerdict });
+      });
+      if (updated) renderCaseNotesBody(updated);
+      refreshCaseList(notesEditingId);
+      showToast('已添加反馈记录');
+    });
+  }
+
+  // 绑定删除反馈
+  body.querySelectorAll('[data-fb-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!window.confirm('删除这条反馈？')) return;
+      const idx = parseInt(btn.dataset.fbDel);
+      saveCaseNotesForm(false);
+      const updated = updateRecord(notesEditingId, r => {
+        r.feedback.splice(idx, 1);
+      });
+      if (updated) renderCaseNotesBody(updated);
+    });
+  });
+}
+
+function saveCaseNotesForm(closeAfter = true) {
+  if (!notesEditingId) return;
+  const val = id => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
+
+  const caseTitle = val('notesCaseTitle');
+  const caseQuestion = val('notesCaseQuestion');
+  const mainContent = val('notesMainContent');
+  const yingqi = val('notesField_yingqi');
+  const yingqiDate = val('notesDate_yingqi');
+
+  const activeVerdictBtn = document.querySelector('#notesVerdictSegmented .notes-verdict-btn.active');
+  const verdict = activeVerdictBtn ? activeVerdictBtn.dataset.verdict : '待验证';
+
+  const updated = updateRecord(notesEditingId, r => {
+    if (caseTitle) {
+      r.title = caseTitle;
+      r.titleEdited = true;
+    }
+    if (caseQuestion !== undefined) {
+      r.userQuestion = caseQuestion;
+    }
+    r.notes = r.notes || {};
+    r.notes.readings = mainContent;
+    r.notes.judgment = mainContent;
+    r.notes.yingqi = yingqi;
+    r.notes.yingqiDate = yingqiDate;
+    r.remark = mainContent;
+    if (verdict) r.verdict = verdict;
+    rebuildFollowUps(r);
+  });
+
+  if (updated && updated.id === state.activeRecordId) {
+    if (caseTitle) state.caseTitle = updated.title;
+    if (caseQuestion) state.userQuestion = updated.userQuestion;
+    state.caseRemark = updated.remark || '';
+    try { localStorage.setItem('qimen_case_remark', state.caseRemark); } catch (e) {}
+    const txtUser = document.getElementById('txtUserRemark');
+    if (txtUser) txtUser.value = state.caseRemark;
+  }
+  refreshCaseList(notesEditingId);
+  if (closeAfter) {
+    closeModal('modalCaseNotes');
+    showToast('断事笔记与案例已保存');
+  }
+}
+
+function insertYongShenPalacesIntoNotes() {
+  const rec = notesEditingId ? getRecord(notesEditingId) : null;
+  if (!rec) return;
+  if (rec.status === 'pending') {
+    showToast('盘面尚未揭晓，揭盘后再插入用神宫要素');
+    return;
+  }
+  // 以这条记录的原盘为准 (不是当前屏幕上的研究盘)
+  const pan = rec.panSnapshot ? rec.panSnapshot : (rec.id === state.activeRecordId ? state.currentPan : null);
+  if (!pan) {
+    showToast('这条旧案例没有盘面快照：请先“读取并复原此盘”后再插入');
+    return;
+  }
+  const ysList = (rec.selectedYongShen && rec.selectedYongShen.length) ? rec.selectedYongShen : ['值符'];
+  const lines = [];
+  ysList.forEach(ys => {
+    for (let g = 1; g <= 9; g++) {
+      const m = checkPalaceMatchYongShen(pan, g, [ys]);
+      if (m && m.matched) lines.push(`【${ys}】${palaceFactLine(pan, g)}`);
+    }
+  });
+  if (!lines.length) {
+    showToast('没有在盘上找到所选用神的落宫');
+    return;
+  }
+  const ta = document.getElementById('notesMainContent');
+  if (ta) {
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const insertText = lines.join('\n') + '\n';
+    if (typeof start === 'number' && typeof end === 'number') {
+      const before = ta.value.substring(0, start);
+      const after = ta.value.substring(end);
+      const needPrefixNl = before && !before.endsWith('\n') ? '\n' : '';
+      ta.value = before + needPrefixNl + insertText + after;
+      const newPos = before.length + needPrefixNl.length + insertText.length;
+      ta.setSelectionRange(newPos, newPos);
+    } else {
+      ta.value = (ta.value ? ta.value.replace(/\s+$/, '') + '\n\n' : '') + insertText;
+    }
+    ta.focus();
+  }
+  showToast(`已插入 ${lines.length} 个用神落宫象意`);
+}
+
+function initCaseNotesModal() {
+  const btnSave = document.getElementById('btnNotesSave');
+  if (btnSave) btnSave.addEventListener('click', () => saveCaseNotesForm(true));
+  const btnInsert = document.getElementById('btnNotesInsertPalaces');
+  if (btnInsert) btnInsert.addEventListener('click', insertYongShenPalacesIntoNotes);
+  ['btnOpenNotes', 'btnBottomNotes', 'btnYsOpenNotes'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', () => openCaseNotesModal(state.activeRecordId));
+  });
+}
+
+// ========================================================
+// 九宫盘面动态演示与演盘引擎 (Dynamic Board Animation)
+// 先逐个展示地盘各个元素，然后再展示天盘动态运作
+// ========================================================
+const GONG_NAMES_MAP = { 1: '坎一', 2: '坤二', 3: '震三', 4: '巽四', 5: '中五', 6: '乾六', 7: '兑七', 8: '艮八', 9: '离九' };
+const YIQI_SEQUENCE = ['戊', '己', '庚', '辛', '壬', '癸', '丁', '丙', '乙'];
+
+// 地盘原始九星与八门各宫归属 (本宫固定原位)
+const HOME_STARS = { 1: '天蓬', 2: '天芮', 3: '天冲', 4: '天辅', 5: '天禽', 6: '天心', 7: '天柱', 8: '天任', 9: '天英' };
+const HOME_DOORS = { 1: '休门', 2: '死门', 3: '伤门', 4: '杜门', 5: '', 6: '开门', 7: '惊门', 8: '生门', 9: '景门' };
+
+// 五行属性映射字典
+const ELEM_COLOR_MAP = {
+  // 十天干奇仪
+  '甲': 'wood', '乙': 'wood',
+  '丙': 'fire', '丁': 'fire',
+  '戊': 'earth', '己': 'earth',
+  '庚': 'metal', '辛': 'metal',
+  '壬': 'water', '癸': 'water',
+
+  // 九星
+  '天蓬': 'water', '天蓬星': 'water', '蓬': 'water',
+  '天任': 'earth', '天任星': 'earth', '任': 'earth',
+  '天冲': 'wood', '天冲星': 'wood', '冲': 'wood',
+  '天辅': 'wood', '天辅星': 'wood', '辅': 'wood',
+  '天英': 'fire', '天英星': 'fire', '英': 'fire',
+  '天芮': 'earth', '天芮星': 'earth', '芮': 'earth',
+  '天禽': 'earth', '天禽星': 'earth', '禽': 'earth',
+  '天柱': 'metal', '天柱星': 'metal', '柱': 'metal',
+  '天心': 'metal', '天心星': 'metal', '心': 'metal',
+
+  // 八门与飞盘九门
+  '休门': 'water', '休': 'water',
+  '生门': 'earth', '生': 'earth',
+  '伤门': 'wood', '伤': 'wood',
+  '杜门': 'wood', '杜': 'wood',
+  '景门': 'fire', '景': 'fire',
+  '死门': 'earth', '死': 'earth',
+  '惊门': 'metal', '惊': 'metal',
+  '开门': 'metal', '开': 'metal',
+  '中门': 'earth', '中': 'earth',
+
+  // 八神与飞盘九神
+  '值符': 'earth',
+  '螣蛇': 'fire', '腾蛇': 'fire',
+  '太阴': 'metal',
+  '六合': 'wood',
+  '白虎': 'metal',
+  '玄武': 'water',
+  '九地': 'earth',
+  '九天': 'metal',
+  '勾陈': 'earth',
+  '朱雀': 'fire',
+  '太常': 'earth',
+
+  // 九宫
+  1: 'water', 2: 'earth', 3: 'wood', 4: 'wood',
+  5: 'earth', 6: 'metal', 7: 'metal', 8: 'earth', 9: 'fire'
+};
+
+const GONG_WUXING_INFO = {
+  1: { wx: 'water', name: '1水·坎' },
+  2: { wx: 'earth', name: '2土·坤' },
+  3: { wx: 'wood', name: '3木·震' },
+  4: { wx: 'wood', name: '4木·巽' },
+  5: { wx: 'earth', name: '5土·中' },
+  6: { wx: 'metal', name: '6金·乾' },
+  7: { wx: 'metal', name: '7金·兑' },
+  8: { wx: 'earth', name: '8土·艮' },
+  9: { wx: 'fire', name: '9火·离' }
+};
+
+function getWxClass(elem) {
+  if (!elem) return '';
+  const clean = String(elem).replace(/·原$/, '').trim();
+  const wx = ELEM_COLOR_MAP[clean] || ELEM_COLOR_MAP[clean[0]] || '';
+  return wx ? `wx-${wx}` : '';
+}
+
+// 九宫格 3x3 行列网格坐标映射
+const GONG_GRID_COORDS = {
+  4: { row: 0, col: 0 },
+  9: { row: 0, col: 1 },
+  2: { row: 0, col: 2 },
+  3: { row: 1, col: 0 },
+  5: { row: 1, col: 1 },
+  7: { row: 1, col: 2 },
+  8: { row: 2, col: 0 },
+  1: { row: 2, col: 1 },
+  6: { row: 2, col: 2 }
+};
+
+function buildOrthogonalPath(x1, y1, x2, y2, fromCoord, toCoord, R = 22) {
+  const r1 = fromCoord ? fromCoord.row : 0;
+  const c1 = fromCoord ? fromCoord.col : 0;
+  const r2 = toCoord ? toCoord.row : 0;
+  const c2 = toCoord ? toCoord.col : 0;
+
+  // 1. 同一水平行 (无拐角直线，且仅限外周顶行或底行，杜绝穿行中宫)
+  if (r1 === r2 && (r1 === 0 || r1 === 2)) {
+    const dx = x2 - x1;
+    const signX = dx >= 0 ? 1 : -1;
+    const startX = x1 + signX * 8;
+    const endX = x2 - signX * 18;
+    const len = Math.max(10, Math.abs(endX - startX));
+    return {
+      d: `M ${startX} ${y1} L ${endX} ${y2}`,
+      len: Math.round(len)
+    };
+  }
+
+  // 2. 同一垂直列 (无拐角直线，且仅限外周左列或右列，杜绝穿行中宫)
+  if (c1 === c2 && (c1 === 0 || c1 === 2)) {
+    const dy = y2 - y1;
+    const signY = dy >= 0 ? 1 : -1;
+    const startY = y1 + signY * 8;
+    const endY = y2 - signY * 18;
+    const len = Math.max(10, Math.abs(endY - startY));
+    return {
+      d: `M ${x1} ${startY} L ${x2} ${endY}`,
+      len: Math.round(len)
+    };
+  }
+
+  // 3. 穿中宫横向对冲 (震三 col 0 <-> 兑七 col 2, 同在 row 1)：走顶边外围走廊 (巽4 -> 离9 -> 坤2)
+  if (r1 === 1 && r2 === 1 && c1 !== c2) {
+    const trackY = 48;
+    const dx = x2 - x1;
+    const signX = dx >= 0 ? 1 : -1;
+    const startY = y1 - 8;
+    const radius = R;
+    const p1y = trackY + radius;
+    const p2x = x1 + signX * radius;
+    const p3x = x2 - signX * radius;
+    const p4y = trackY + radius;
+    const endY = y2 - 18;
+    const d = `M ${x1} ${startY} L ${x1} ${p1y} Q ${x1} ${trackY} ${p2x} ${trackY} L ${p3x} ${trackY} Q ${x2} ${trackY} ${x2} ${p4y} L ${x2} ${endY}`;
+    const len = Math.round(Math.abs(startY - p1y) + Math.abs(p3x - p2x) + Math.abs(endY - p4y) + Math.PI * radius);
+    return { d, len };
+  }
+
+  // 4. 穿中宫纵向对冲 (离九 row 0 <-> 坎一 row 2, 同在 col 1)：走右边外围走廊 (坤2 -> 兑7 -> 乾6)
+  if (c1 === 1 && c2 === 1 && r1 !== r2) {
+    const trackX = 362;
+    const dy = y2 - y1;
+    const signY = dy >= 0 ? 1 : -1;
+    const startX = x1 + 8;
+    const radius = R;
+    const p1x = trackX - radius;
+    const p2y = y1 + signY * radius;
+    const p3y = y2 - signY * radius;
+    const p4x = trackX - radius;
+    const endX = x2 + 18;
+    const d = `M ${startX} ${y1} L ${p1x} ${y1} Q ${trackX} ${y1} ${trackX} ${p2y} L ${trackX} ${p3y} Q ${trackX} ${y2} ${p4x} ${y2} L ${endX} ${y2}`;
+    const len = Math.round(Math.abs(p1x - startX) + Math.abs(p3y - p2y) + Math.abs(endX - p4x) + Math.PI * radius);
+    return { d, len };
+  }
+
+  // 5. 异行异列：拐角走外周大方格四角之一 (巽4、坤2、艮8、乾6)，严禁穿行中宫
+  let useHorizontalFirst = true;
+  if (r1 === 0 || r1 === 2) {
+    // 起点位于顶行或底行：先沿顶/底水平走道行进，再拐弯垂直射向目标
+    useHorizontalFirst = true;
+  } else if (c1 === 0 || c1 === 2) {
+    // 起点位于左列或右列：先沿左/右垂直走道行进，再拐弯水平射向目标
+    useHorizontalFirst = false;
+  } else {
+    useHorizontalFirst = true;
+  }
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const signX = dx >= 0 ? 1 : -1;
+  const signY = dy >= 0 ? 1 : -1;
+
+  if (useHorizontalFirst) {
+    // 先水平后垂直：拐角坐标 (x2, y1)
+    const cx = x2;
+    const cy = y1;
+    const radius = Math.min(R, Math.abs(dx) * 0.45, Math.abs(dy) * 0.45);
+    const startX = x1 + signX * 8;
+    const p1x = cx - signX * radius;
+    const p1y = y1;
+    const p2x = x2;
+    const p2y = cy + signY * radius;
+    const endY = y2 - signY * 18;
+    const d = `M ${startX} ${y1} L ${p1x} ${p1y} Q ${cx} ${cy} ${p2x} ${p2y} L ${x2} ${endY}`;
+    const len = Math.round(Math.abs(p1x - startX) + (Math.PI * radius / 2) + Math.abs(endY - p2y));
+    return { d, len };
+  } else {
+    // 先垂直后水平：拐角坐标 (x1, y2)
+    const cx = x1;
+    const cy = y2;
+    const radius = Math.min(R, Math.abs(dx) * 0.45, Math.abs(dy) * 0.45);
+    const startY = y1 + signY * 8;
+    const p1x = x1;
+    const p1y = cy - signY * radius;
+    const p2x = cx + signX * radius;
+    const p2y = y2;
+    const endX = x2 - signX * 18;
+    const d = `M ${x1} ${startY} L ${p1x} ${p1y} Q ${cx} ${cy} ${p2x} ${p2y} L ${endX} ${y2}`;
+    const len = Math.round(Math.abs(p1y - startY) + (Math.PI * radius / 2) + Math.abs(endX - p2x));
+    return { d, len };
+  }
+}
+
+function buildStraightPath(x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1) {
+    return { d: `M ${x1} ${y1} L ${x2} ${y2}`, len: 10 };
+  }
+  const ux = dx / dist;
+  const uy = dy / dist;
+
+  // 起点紧随原位文字边缘，终点预留 marker 箭头落位空间
+  const startOffset = 10;
+  const endOffset = 18;
+  const startX = x1 + ux * startOffset;
+  const startY = y1 + uy * startOffset;
+  const endX = x2 - ux * endOffset;
+  const endY = y2 - uy * endOffset;
+  const len = Math.max(10, Math.round(dist - startOffset - endOffset));
+
+  return {
+    d: `M ${startX} ${startY} L ${endX} ${endY}`,
+    len
+  };
+}
+
+function renderAnimationArrow(fromGong, toGong, label = '', arrowType = '', flightDuration = 600) {
+  const svg = document.getElementById('boardAnimArrowLayer');
+  if (!svg) return;
+  if (!fromGong || !toGong || fromGong === toGong) {
+    svg.innerHTML = '';
+    return;
+  }
+  const fromCoord = GONG_GRID_COORDS[fromGong];
+  const toCoord = GONG_GRID_COORDS[toGong];
+  if (!fromCoord || !toCoord) {
+    svg.innerHTML = '';
+    return;
+  }
+
+  const svgRect = svg.getBoundingClientRect();
+  const width = svgRect.width || 410;
+  const height = svgRect.height || 410;
+
+  const colW = width / 3;
+  const rowH = height / 3;
+
+  // 默认宫位中心坐标
+  let x1 = (fromCoord.col + 0.5) * colW;
+  let y1 = (fromCoord.row + 0.5) * rowH;
+  let x2 = (toCoord.col + 0.5) * colW;
+  let y2 = (toCoord.row + 0.5) * rowH;
+
+  // 精确定位：优先定位原位文字与新位文字的实际 DOM 视觉中心点
+  const fromCell = document.getElementById(`cellGong${fromGong}`);
+  const toCell = document.getElementById(`cellGong${toGong}`);
+
+  if (fromCell && svgRect.width > 0) {
+    let fromTarget = null;
+    if (arrowType === 'star') {
+      fromTarget = fromCell.querySelector('.anim-origin-motion-star') || fromCell.querySelector('.anim-slot-star') || fromCell.querySelector('.anim-row-mid');
+    } else if (arrowType === 'door') {
+      fromTarget = fromCell.querySelector('.anim-origin-motion-door') || fromCell.querySelector('.anim-slot-door') || fromCell.querySelector('.anim-row-bot');
+    }
+    if (fromTarget) {
+      const r = fromTarget.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        x1 = r.left + r.width / 2 - svgRect.left;
+        y1 = r.top + r.height / 2 - svgRect.top;
+      }
+    }
+  }
+
+  if (toCell && svgRect.width > 0) {
+    let toTarget = null;
+    if (arrowType === 'star') {
+      toTarget = toCell.querySelector('.anim-target-motion-star') || toCell.querySelector('.highlight-fu-star') || toCell.querySelector('.anim-star-tag') || toCell.querySelector('.anim-slot-star');
+    } else if (arrowType === 'door') {
+      toTarget = toCell.querySelector('.anim-target-motion-door') || toCell.querySelector('.is-shi') || toCell.querySelector('.anim-door-tag') || toCell.querySelector('.anim-slot-door');
+    }
+    if (toTarget) {
+      const r = toTarget.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        x2 = r.left + r.width / 2 - svgRect.left;
+        y2 = r.top + r.height / 2 - svgRect.top;
+      }
+    }
+  }
+
+  // 同行同列微偏差对齐：同行严格水平，同列严格垂直，杜绝字体排版导致微小偏折
+  if (fromCoord.row === toCoord.row) {
+    const avgY = (y1 + y2) / 2;
+    y1 = avgY;
+    y2 = avgY;
+  }
+  if (fromCoord.col === toCoord.col) {
+    const avgX = (x1 + x2) / 2;
+    x1 = avgX;
+    x2 = avgX;
+  }
+
+  // 文字首尾直线生长路径：直截了当连接原位文字与新位文字，从原位向新位生长，避免走外周路径造成顺逆误导
+  const route = buildStraightPath(x1, y1, x2, y2);
+  const pathD = route.d;
+  const pathLen = route.len + 30;
+
+  svg.innerHTML = `
+    <defs>
+      <marker id="animArrowMarker" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto" overflow="visible">
+        <path d="M 0 1.5 L 9 5 L 0 8.5 z" class="anim-arrow-marker" />
+      </marker>
+      <mask id="arrowMotionMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}">
+        <path d="${pathD}" fill="none" stroke="white" stroke-width="36" stroke-linecap="round" class="anim-mask-lead-path" style="--mask-len: ${pathLen}px; animation-duration: ${flightDuration}ms;" />
+      </mask>
+    </defs>
+    <path d="${pathD}" class="anim-arrow-path" mask="url(#arrowMotionMask)" marker-end="url(#animArrowMarker)" />
+  `;
+}
+
+function clearAnimationArrow() {
+  const svg = document.getElementById('boardAnimArrowLayer');
+  if (svg) svg.innerHTML = '';
+}
+
+window.__qimen_renderAnimationArrow = renderAnimationArrow;
+window.__qimen_buildStraightPath = buildStraightPath;
+
+const boardAnimState = {
+  running: false,
+  paused: false,
+  pan: null,
+  stepIdx: 0,
+  steps: [],
+  timerId: null,
+  subTimers: [],
+  speedIdx: 0,
+  speedOptions: [
+    { label: '1x', factor: 1.0 },
+    { label: '1.5x', factor: 0.65 },
+    { label: '0.6x', factor: 1.5 }
+  ]
+};
+
+function clearAnimSubTimers() {
+  if (boardAnimState.subTimers && boardAnimState.subTimers.length) {
+    boardAnimState.subTimers.forEach(id => clearTimeout(id));
+    boardAnimState.subTimers = [];
+  }
+}
+
+function addAnimSubTimer(fn, delay) {
+  if (!boardAnimState.subTimers) boardAnimState.subTimers = [];
+  const id = setTimeout(fn, delay);
+  boardAnimState.subTimers.push(id);
+  return id;
+}
+
+// 转盘八卦宫位顺时针与逆时针环线 (洛书外周 8 宫：坎1->艮8->震3->巽4->离9->坤2->兑7->乾6)
+const ZHUAN_RING_CW = [1, 8, 3, 4, 9, 2, 7, 6];
+const ZHUAN_RING_CCW = [1, 6, 7, 2, 9, 4, 3, 8];
+
+// 飞盘洛书九宫飞布序列 (坎1、坤2、震3、巽4、中5、乾6、兑7、艮8、离9)
+const JIUGONG_FEI_SEQ = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+function getRingSequenceCW(startGong) {
+  const idx = ZHUAN_RING_CW.indexOf(startGong);
+  if (idx === -1) return [...ZHUAN_RING_CW];
+  return [...ZHUAN_RING_CW.slice(idx), ...ZHUAN_RING_CW.slice(0, idx)];
+}
+
+function getRingSequenceCCW(startGong) {
+  const idx = ZHUAN_RING_CCW.indexOf(startGong);
+  if (idx === -1) return [...ZHUAN_RING_CCW];
+  return [...ZHUAN_RING_CCW.slice(idx), ...ZHUAN_RING_CCW.slice(0, idx)];
+}
+
+function getFeipanSequence(startGong, dun) {
+  const startIdx = JIUGONG_FEI_SEQ.indexOf(startGong);
+  const seq = [];
+  for (let i = 0; i < 9; i++) {
+    const targetIdx = (dun === '阳')
+      ? (startIdx + i) % 9
+      : (startIdx - i + 9) % 9;
+    seq.push(JIUGONG_FEI_SEQ[targetIdx]);
+  }
+  return seq;
+}
+
+function buildBoardAnimationSteps(pan) {
+  const steps = [];
+  const p = pan.pillars;
+  const isZhuan = pan.paipanMethod === 'zhuan';
+  const methodLabel = isZhuan ? '排宫法/转盘' : '飞宫法/飞盘';
+
+  // 1. 初始化底盘基调
+  steps.push({
+    stage: '起局',
+    badgeClass: 'stage-dipan',
+    desc: `起局定元：${p.year}年 ${p.month}月 ${p.day}日 ${p.hour}时 ·【${methodLabel} · ${pan.dun}遁${GONG_NUM[pan.ju] || pan.ju}局】`,
+    duration: 500,
+    activeGongs: [],
+    originGongs: [],
+    revealedDipanGans: new Set(),
+    revealedStarGongs: new Set(),
+    revealedTianGanGongs: new Set(),
+    revealedDoorGongs: new Set(),
+    revealedSpiritGongs: new Set(),
+    showFuShiOrigin: false,
+    showMarks: false,
+    newGong: null,
+    newType: null
+  });
+
+  // 2. 地盘三奇六仪逐个落入 (9 步，严格按 戊己庚辛壬癸丁丙乙 顺序逐宫飞布)
+  const dipanRevealed = new Set();
+  YIQI_SEQUENCE.forEach((gan, idx) => {
+    let targetGong = null;
+    for (let g = 1; g <= 9; g++) {
+      if (pan.dipan[g] === gan) {
+        targetGong = g;
+        break;
+      }
+    }
+    if (!targetGong) targetGong = pan.ju;
+    dipanRevealed.add(gan);
+
+    const isCenter = targetGong === 5;
+    let extraNote = '';
+    if (isCenter && isZhuan) {
+      extraNote = '（中五皇极，寄于坤二）';
+    }
+
+    steps.push({
+      stage: '地盘',
+      badgeClass: 'stage-dipan',
+      desc: `布地盘六仪 (${idx + 1}/9)：奇仪【${gan}】飞落${GONG_NAMES_MAP[targetGong]}宫 ${extraNote}`,
+      duration: 360,
+      activeGongs: [targetGong, ...(isCenter && isZhuan ? [2] : [])],
+      originGongs: [],
+      revealedDipanGans: new Set(dipanRevealed),
+      revealedStarGongs: new Set(),
+      revealedTianGanGongs: new Set(),
+      revealedDoorGongs: new Set(),
+      revealedSpiritGongs: new Set(),
+      showFuShiOrigin: false,
+      showMarks: false,
+      newGong: targetGong,
+      newType: 'dipan'
+    });
+  });
+
+  // 3. 寻旬首遁甲，锁定值符星与值使门原位 (仅在旬首宫亮出原位星门，清晰聚焦)
+  const fuGong = pan.fuGong;
+  steps.push({
+    stage: '旬首',
+    badgeClass: 'stage-tianpan',
+    desc: `寻旬首：时柱【${p.hour}】属【${pan.xun}】旬，甲遁于【${pan.shouYi}】（在${GONG_NAMES_MAP[fuGong]}宫），定值符【${pan.starFu}】、值使【${pan.doorShi}】${isZhuan ? '' : '（飞宫法）'}`,
+    duration: 850,
+    activeGongs: [fuGong],
+    originGongs: [fuGong],
+    revealedDipanGans: new Set(dipanRevealed),
+    revealedStarGongs: new Set(),
+    revealedTianGanGongs: new Set(),
+    revealedDoorGongs: new Set(),
+    revealedSpiritGongs: new Set(),
+    showFuShiOrigin: true,
+    showMarks: false,
+    newGong: fuGong,
+    newType: 'origin'
+  });
+
+  // 4. 值符随时干转九星（转盘8步，飞盘飞布9宫9步含中五！）
+  const shiGong = pan.shiGong;
+  const starGongSeq = isZhuan ? getRingSequenceCW(shiGong) : getFeipanSequence(shiGong, pan.dun);
+  const totalStars = starGongSeq.length;
+  const starRevealed = new Set();
+  const tianganRevealed = new Set();
+
+  starGongSeq.forEach((g, idx) => {
+    starRevealed.add(g);
+    tianganRevealed.add(g);
+    const star = pan.tianpanStar[g] || '';
+    const tg = pan.tianpanGan[g] || '';
+    const isFirst = idx === 0;
+
+    let desc = '';
+    if (isFirst) {
+      desc = `值符${isZhuan ? '加临' : '飞临'}时干 (1/${totalStars})：值符【${pan.starFu}】携天盘【${tg}】${isZhuan ? '加临' : '飞落'}${GONG_NAMES_MAP[g]}宫`;
+    } else {
+      const dirText = isZhuan ? '顺转' : (pan.dun === '阳' ? '顺飞' : '逆飞');
+      desc = `${isZhuan ? '运转' : '飞布'}九星 (${idx + 1}/${totalStars})：【${star}】携天盘【${tg}】${dirText}飞落${GONG_NAMES_MAP[g]}宫`;
+    }
+
+    steps.push({
+      stage: '九星',
+      badgeClass: 'stage-tianpan',
+      desc,
+      duration: isFirst ? 1400 : 360,
+      activeGongs: [g],
+      originGongs: isFirst ? [fuGong] : [],
+      motionType: isFirst ? 'star' : null,
+      motionFrom: isFirst ? fuGong : null,
+      motionTo: isFirst ? g : null,
+      arrowFrom: isFirst ? fuGong : null,
+      arrowTo: isFirst ? g : null,
+      arrowType: isFirst ? 'star' : null,
+      arrowLabel: '',
+      revealedDipanGans: new Set(dipanRevealed),
+      revealedStarGongs: new Set(starRevealed),
+      revealedTianGanGongs: new Set(tianganRevealed),
+      revealedDoorGongs: new Set(),
+      revealedSpiritGongs: new Set(),
+      showFuShiOrigin: false,
+      showMarks: false,
+      newGong: g,
+      newType: 'star'
+    });
+  });
+
+  // 5. 值使随时支转八门/九门（转盘8步，飞盘飞布9宫9步含中门！）
+  const doorGong = pan.doorShiGong;
+  const doorGongSeq = isZhuan ? getRingSequenceCW(doorGong) : getFeipanSequence(doorGong, pan.dun);
+  const totalDoors = doorGongSeq.length;
+  const doorRevealed = new Set();
+
+  doorGongSeq.forEach((g, idx) => {
+    doorRevealed.add(g);
+    const door = pan.tianpanDoor[g] || '';
+    const isFirst = idx === 0;
+
+    let desc = '';
+    if (isFirst) {
+      desc = `值使随时支 (1/${totalDoors})：值使【${pan.doorShi}】自旬首依时辰数${isZhuan ? '运转' : '飞布'}至${GONG_NAMES_MAP[g]}宫`;
+    } else {
+      const dirText = isZhuan ? '顺转' : (pan.dun === '阳' ? '顺飞' : '逆飞');
+      desc = `${isZhuan ? '运转' : '飞布'}${isZhuan ? '八门' : '九门'} (${idx + 1}/${totalDoors})：【${door}】${dirText}飞落${GONG_NAMES_MAP[g]}宫`;
+    }
+
+    steps.push({
+      stage: isZhuan ? '八门' : '九门',
+      badgeClass: 'stage-tianpan',
+      desc,
+      duration: isFirst ? 1400 : 360,
+      activeGongs: [g],
+      originGongs: isFirst ? [fuGong] : [],
+      motionType: isFirst ? 'door' : null,
+      motionFrom: isFirst ? fuGong : null,
+      motionTo: isFirst ? g : null,
+      arrowFrom: isFirst ? fuGong : null,
+      arrowTo: isFirst ? g : null,
+      arrowType: isFirst ? 'door' : null,
+      arrowLabel: '',
+      revealedDipanGans: new Set(dipanRevealed),
+      revealedStarGongs: new Set(starRevealed),
+      revealedTianGanGongs: new Set(tianganRevealed),
+      revealedDoorGongs: new Set(doorRevealed),
+      revealedSpiritGongs: new Set(),
+      showFuShiOrigin: false,
+      showMarks: false,
+      newGong: g,
+      newType: 'door'
+    });
+  });
+
+  // 6. 八神/九神飞布（转盘8步，飞盘飞布9宫9步含勾陈/朱雀/太常！）
+  const spiritGongSeq = isZhuan
+    ? ((pan.dun === '阳') ? getRingSequenceCW(shiGong) : getRingSequenceCCW(shiGong))
+    : getFeipanSequence(shiGong, pan.dun);
+  const totalSpirits = spiritGongSeq.length;
+  const spiritRevealed = new Set();
+
+  spiritGongSeq.forEach((g, idx) => {
+    spiritRevealed.add(g);
+    const spirit = pan.tianpanSpirit[g] || '';
+    const isFirst = idx === 0;
+
+    let desc = '';
+    if (isFirst) {
+      desc = `排布${isZhuan ? '八神' : '九神'} (1/${totalSpirits})：神首【值符】加临天盘时干${GONG_NAMES_MAP[g]}宫`;
+    } else {
+      const dirText = isZhuan ? (pan.dun === '阳' ? '顺时针' : '逆时针') : (pan.dun === '阳' ? '顺飞' : '逆飞');
+      desc = `排布${isZhuan ? '八神' : '九神'} (${idx + 1}/${totalSpirits})：【${spirit}】${dirText}飞落${GONG_NAMES_MAP[g]}宫`;
+    }
+
+    steps.push({
+      stage: isZhuan ? '八神' : '九神',
+      badgeClass: 'stage-tianpan',
+      desc,
+      duration: isFirst ? 500 : 320,
+      activeGongs: [g],
+      originGongs: [],
+      revealedDipanGans: new Set(dipanRevealed),
+      revealedStarGongs: new Set(starRevealed),
+      revealedTianGanGongs: new Set(tianganRevealed),
+      revealedDoorGongs: new Set(doorRevealed),
+      revealedSpiritGongs: new Set(spiritRevealed),
+      showFuShiOrigin: false,
+      showMarks: false,
+      newGong: g,
+      newType: 'spirit'
+    });
+  });
+
+  // 7. 标定时柱旬空与驿马星等天时大象 (1 步)
+  const kongGongs = [1,2,3,4,5,6,7,8,9].filter(g => pan.palaceFlags[g] && pan.palaceFlags[g].isKong);
+  const maGong = [1,2,3,4,5,6,7,8,9].find(g => pan.palaceFlags[g] && pan.palaceFlags[g].hasMa);
+  steps.push({
+    stage: '大象',
+    badgeClass: 'stage-tianpan',
+    desc: `标明大象：标定时柱旬空【${pan.kongwang.hour}】与驿马星，天时大象俱备`,
+    duration: 750,
+    activeGongs: [...kongGongs, ...(maGong ? [maGong] : [])],
+    originGongs: [],
+    revealedDipanGans: new Set(dipanRevealed),
+    revealedStarGongs: new Set(starRevealed),
+    revealedTianGanGongs: new Set(tianganRevealed),
+    revealedDoorGongs: new Set(doorRevealed),
+    revealedSpiritGongs: new Set(spiritRevealed),
+    showFuShiOrigin: false,
+    showMarks: true,
+    newGong: null,
+    newType: 'marks'
+  });
+
+  // 8. 推演圆满完成 (1 步)
+  steps.push({
+    stage: '圆满',
+    badgeClass: 'stage-done',
+    desc: `排盘推演圆满完成！现已呈现完整盘面，可点击任意宫位研判克应`,
+    duration: 900,
+    activeGongs: [],
+    originGongs: [],
+    revealedDipanGans: new Set(dipanRevealed),
+    revealedStarGongs: new Set(starRevealed),
+    revealedTianGanGongs: new Set(tianganRevealed),
+    revealedDoorGongs: new Set(doorRevealed),
+    revealedSpiritGongs: new Set(spiritRevealed),
+    showFuShiOrigin: false,
+    showMarks: true,
+    newGong: null,
+    newType: 'done'
+  });
+
+  return steps;
+}
+
+function renderAnimCellContent(pan, g, step) {
+  const isZhuan = pan.paipanMethod === 'zhuan';
+  const dg = pan.dipan[g] || '';
+  const isDgRevealed = step.revealedDipanGans && step.revealedDipanGans.has(dg);
+  const isNewDg = step.newGong === g && step.newType === 'dipan';
+  const gongInfo = GONG_WUXING_INFO[g] || { wx: '', name: GONG_NAMES_MAP[g] || '' };
+
+  // 中五宫特殊展示：仅在时家转盘法下中五皇极寄坤二；飞盘法下中五宫是标准主宫，走完整三行！
+  if (g === 5 && isZhuan) {
+    const centerGan = isDgRevealed ? dg : '';
+    const centerWx = getWxClass(centerGan);
+    let centerKong = '';
+    if (step.showMarks && pan.palaceFlags[5] && pan.palaceFlags[5].isKong) {
+      centerKong = `<span class="badge-kong anim-symbol-drop" style="position: absolute; top: 6px; left: 8px;">○</span>`;
+    }
+    return `
+      <div class="anim-center-cell">
+        ${centerKong}
+        <div class="anim-cell-gong-mark wx-earth">5土·中</div>
+        <div class="cell-center-content ${centerWx} ${isNewDg ? 'anim-symbol-drop' : ''}" style="font-size: 32px; font-weight: 800; line-height: 1.2;">
+          ${centerGan || '皇极'}
+        </div>
+        <div class="anim-watermark" style="font-size: 11px; margin-top: 4px;">中五 · 寄坤二</div>
+      </div>
+    `;
+  }
+
+  // ================= 第一行 (顶层天位)：八神/九神 (左) + 宫名数理 (右) =================
+  let spiritHtml = '';
+  if (step.revealedSpiritGongs && step.revealedSpiritGongs.has(g)) {
+    const spirit = pan.tianpanSpirit[g] || '';
+    const isFu = spirit === '值符';
+    const spiritWx = getWxClass(spirit);
+    spiritHtml = `<span class="spirit-tag ${spiritWx} ${isFu ? 'is-fu' : ''} ${step.newGong === g && step.newType === 'spirit' ? 'anim-symbol-drop' : ''}">${spirit}</span>`;
+  }
+
+  let kongHtml = '';
+  let maHtml = '';
+  if (step.showMarks) {
+    const flag = pan.palaceFlags[g];
+    if (flag) {
+      if (flag.isKong) kongHtml = `<div class="anim-palace-kong-wrap"><span class="badge-kong anim-symbol-drop">○</span></div>`;
+      if (flag.hasMa) maHtml = `<div class="palace-ma-wrap"><span class="badge-ma anim-symbol-drop">马</span></div>`;
+    }
+  }
+
+  const topRowHtml = `
+    <div class="anim-cell-row anim-row-top">
+      <div class="anim-cell-left-box anim-slot-spirit">
+        ${spiritHtml}
+      </div>
+      <div class="anim-cell-gong-mark ${gongInfo.wx ? 'wx-' + gongInfo.wx : ''}">
+        ${gongInfo.name}
+      </div>
+    </div>
+  `;
+
+  // ================= 第二行 (中层星位)：九星 (左) + 天盘奇仪 (右) =================
+  let starHtml = '';
+  if (step.motionType === 'star') {
+    if (g === step.motionFrom) {
+      // 原宫位展示对应的九星（无多余·原字，无背景底色，原色呈现）
+      const originStar = pan.starFu || HOME_STARS[g] || '';
+      const starWx = getWxClass(originStar);
+      let starDisplay = originStar;
+      if (originStar.includes('天芮')) starDisplay = `天芮<span class="star-qin wx-earth">禽</span>`;
+      starHtml = `<span class="anim-star-tag ${starWx} anim-origin-motion-star" id="animOriginMotionStar">${starDisplay}</span>`;
+    } else if (g === step.motionTo) {
+      // 目标新宫位九星：初始等待状态 (is-waiting)，待虚线飞抵后显现
+      const starName = pan.tianpanStar[g] || '';
+      const isFuStar = starName.includes(pan.starFu);
+      const starWx = getWxClass(starName);
+      let starDisplay = starName;
+      if (starName.includes('天芮')) starDisplay = `天芮<span class="star-qin wx-earth">禽</span>`;
+      starHtml = `<span class="anim-star-tag ${starWx} ${isFuStar ? 'highlight-fu-star' : ''} anim-target-motion-star is-waiting" id="animTargetMotionStar">${starDisplay}</span>`;
+    } else if (step.revealedStarGongs && step.revealedStarGongs.has(g)) {
+      const starName = pan.tianpanStar[g] || '';
+      const isFuStar = starName.includes(pan.starFu);
+      const starWx = getWxClass(starName);
+      let starDisplay = starName;
+      if (starName.includes('天芮')) starDisplay = `天芮<span class="star-qin wx-earth">禽</span>`;
+      starHtml = `<span class="anim-star-tag ${starWx} ${isFuStar ? 'highlight-fu-star' : ''}">${starDisplay}</span>`;
+    }
+  } else if (step.revealedStarGongs && step.revealedStarGongs.has(g)) {
+    const starName = pan.tianpanStar[g] || '';
+    const isFuStar = starName.includes(pan.starFu);
+    const starWx = getWxClass(starName);
+    let starDisplay = starName;
+    if (starName.includes('天芮')) starDisplay = `天芮<span class="star-qin wx-earth">禽</span>`;
+    starHtml = `<span class="anim-star-tag ${starWx} ${isFuStar ? 'highlight-fu-star' : ''} ${step.newGong === g && step.newType === 'star' ? 'anim-symbol-drop' : ''}">${starDisplay}</span>`;
+  }
+
+  // 天盘奇仪 (正位第二行右侧)
+  let tgHtml = '';
+  if (step.revealedTianGanGongs && step.revealedTianGanGongs.has(g)) {
+    const tg = pan.tianpanGan[g] || '';
+    const tgWx = getWxClass(tg);
+    const isWaiting = (step.motionType === 'star' && g === step.motionTo);
+    const waitClass = isWaiting ? 'anim-target-motion-tg is-waiting' : '';
+    const dropClass = (!isWaiting && step.newGong === g && step.newType === 'star') ? 'anim-symbol-drop' : '';
+    tgHtml = `<span class="tian-gan ${tgWx} ${waitClass} ${dropClass}">${tg}</span>`;
+    if (pan.tianpanJigan[g]) {
+      const jiWx = getWxClass(pan.tianpanJigan[g]);
+      tgHtml += `<span class="tian-jigan-stem ${jiWx} ${waitClass} ${dropClass}">${pan.tianpanJigan[g]}</span>`;
+    }
+  }
+
+  const midRowHtml = `
+    <div class="anim-cell-row anim-row-mid">
+      <div class="anim-cell-left-box anim-slot-star">
+        ${starHtml}
+      </div>
+      <div class="cell-stem-group anim-cell-right-box anim-slot-tiangan">${tgHtml}</div>
+    </div>
+  `;
+
+  // ================= 第三行 (底层人地)：八门/九门 (左) + 地盘奇仪 (右) =================
+  let doorHtml = '';
+  if (step.motionType === 'door') {
+    if (g === step.motionFrom) {
+      // 原宫位展示对应的八门（无多余·原字，无背景底色，原色呈现）
+      const originDoor = pan.doorShi || HOME_DOORS[g] || (g === 5 ? '中门' : '');
+      const doorWx = getWxClass(originDoor);
+      doorHtml = `<span class="anim-door-tag ${doorWx} anim-origin-motion-door" id="animOriginMotionDoor">${originDoor}</span>`;
+    } else if (g === step.motionTo) {
+      // 目标新宫位八门：初始等待状态 (is-waiting)，待虚线飞抵后显现
+      const doorName = pan.tianpanDoor[g] || '';
+      const isShiDoor = doorName.includes(pan.doorShi) && g === pan.doorShiGong;
+      const doorWx = getWxClass(doorName);
+      doorHtml = `<span class="anim-door-tag ${doorWx} ${isShiDoor ? 'is-shi' : ''} anim-target-motion-door is-waiting" id="animTargetMotionDoor">${doorName}</span>`;
+    } else if (step.revealedDoorGongs && step.revealedDoorGongs.has(g)) {
+      const doorName = pan.tianpanDoor[g] || '';
+      const isShiDoor = doorName.includes(pan.doorShi) && g === pan.doorShiGong;
+      const doorWx = getWxClass(doorName);
+      doorHtml = `<span class="anim-door-tag ${doorWx} ${isShiDoor ? 'is-shi' : ''}">${doorName}</span>`;
+    }
+  } else if (step.revealedDoorGongs && step.revealedDoorGongs.has(g)) {
+    const doorName = pan.tianpanDoor[g] || '';
+    const isShiDoor = doorName.includes(pan.doorShi) && g === pan.doorShiGong;
+    const doorWx = getWxClass(doorName);
+    doorHtml = `<span class="anim-door-tag ${doorWx} ${isShiDoor ? 'is-shi' : ''} ${step.newGong === g && step.newType === 'door' ? 'anim-symbol-drop' : ''}">${doorName}</span>`;
+  }
+
+  // 地盘干 (正位第三行右下角)
+  let dgHtml = '';
+  if (isDgRevealed) {
+    const dgWx = getWxClass(dg);
+    dgHtml = `<span class="di-gan ${dgWx} ${isNewDg ? 'anim-symbol-drop' : ''}">${dg}</span>`;
+    // 坤二宫寄干 (若时家转盘且中五干已排)
+    if (g === 2 && isZhuan && step.revealedDipanGans.has(pan.dipan[5])) {
+      const jiganVal = pan.dipan[5];
+      const jiganWx = getWxClass(jiganVal);
+      dgHtml += `<span class="di-jigan-stem ${jiganWx} ${step.newGong === 5 ? 'anim-symbol-drop' : ''}" title="中五寄干">${jiganVal}</span>`;
+    }
+  }
+
+  const botRowHtml = `
+    <div class="anim-cell-row anim-row-bot">
+      <div class="anim-cell-left-box anim-slot-door">
+        ${doorHtml}
+      </div>
+      <div class="cell-stem-group anim-cell-right-box anim-slot-digan">${dgHtml}</div>
+    </div>
+  `;
+
+  return `<div class="anim-cell-inner">${topRowHtml}${midRowHtml}${botRowHtml}${maHtml}${kongHtml}</div>`;
+}
+
+function startBoardAnimation() {
+  if (blockIfPending('排盘过程')) return;
+  if (!state.currentPan) executePaipan();
+  const pan = state.currentPan;
+  if (!pan) return;
+
+  // 清除进行中的演示
+  stopBoardAnimation(false);
+
+  boardAnimState.running = true;
+  boardAnimState.paused = false;
+  boardAnimState.pan = pan;
+  boardAnimState.stepIdx = 0;
+  boardAnimState.steps = buildBoardAnimationSteps(pan);
+
+  // 显示控制横幅并激活按钮状态
+  const banner = document.getElementById('boardAnimBanner');
+  if (banner) banner.style.display = 'flex';
+  const toggleBtn = document.getElementById('btnStartBoardAnimation');
+  if (toggleBtn) toggleBtn.classList.add('is-active');
+
+  const grid = document.getElementById('nineGrid');
+  if (grid) {
+    grid.classList.add('is-animating-board');
+    // 演盘开始时，暂时清除用神弱化蒙版，确保全盘九宫完全通透清晰
+    grid.classList.remove('has-yongshen-active');
+  }
+
+  // 临时清除可能残存的单元格蒙版或选框
+  for (let g = 1; g <= 9; g++) {
+    const cell = document.getElementById(`cellGong${g}`);
+    if (cell) {
+      cell.classList.remove('is-palace-dimmed', 'selected', 'is-yongshen', 'is-yongshen-zhifu', 'is-yongshen-opposite-kong');
+    }
+  }
+
+  // 平滑滚动到九宫盘面卡片
+  const cardSection = document.getElementById('boardCardSection');
+  if (cardSection) {
+    cardSection.classList.add('is-anim-active');
+    cardSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  const iconPause = document.getElementById('animPauseIcon');
+  if (iconPause) iconPause.textContent = '⏸';
+
+  playAnimStep();
+}
+
+function playAnimStep() {
+  if (!boardAnimState.running || boardAnimState.paused) return;
+  clearAnimSubTimers();
+  const steps = boardAnimState.steps;
+  const idx = boardAnimState.stepIdx;
+  const pan = boardAnimState.pan;
+  if (idx >= steps.length) {
+    stopBoardAnimation(true);
+    return;
+  }
+
+  const step = steps[idx];
+  // 1. 更新顶部控制横幅
+  const badge = document.getElementById('animStageBadge');
+  if (badge) {
+    badge.textContent = step.stage;
+    badge.className = `anim-stage-badge ${step.badgeClass || ''}`;
+  }
+  const desc = document.getElementById('animStepDesc');
+  if (desc) desc.textContent = step.desc;
+
+  const bar = document.getElementById('animProgressBar');
+  if (bar) {
+    const pct = ((idx + 1) / steps.length * 100).toFixed(1);
+    bar.style.width = `${pct}%`;
+  }
+
+  // 2. 渲染 9 宫
+  const activeSet = new Set(step.activeGongs || []);
+  const originSet = new Set(step.originGongs || []);
+  for (let g = 1; g <= 9; g++) {
+    const cell = document.getElementById(`cellGong${g}`);
+    if (!cell) continue;
+    cell.innerHTML = renderAnimCellContent(pan, g, step);
+    cell.classList.toggle('is-anim-highlight', activeSet.has(g));
+    cell.classList.toggle('is-anim-origin', originSet.has(g));
+    cell.classList.remove('is-yongshen', 'is-yongshen-zhifu', 'is-yongshen-opposite-kong');
+  }
+
+  const factor = boardAnimState.speedOptions[boardAnimState.speedIdx].factor;
+
+  // 3. 动态视觉引导虚线发射运动 (原位星/门 -> 新变动位星/门)
+  if (step.arrowFrom && step.arrowTo) {
+    const flightDuration = Math.round(620 * factor);
+    renderAnimationArrow(step.arrowFrom, step.arrowTo, step.arrowLabel || '', step.arrowType || '', flightDuration);
+  } else {
+    clearAnimationArrow();
+  }
+
+  // 4. 若为动态位移运动步 (九星加临 / 八门随时支)：调度原位消失与新位出现子时序
+  if (step.motionType) {
+    const fadeOutDelay = Math.round(280 * factor);
+    const arriveDelay = Math.round(580 * factor);
+
+    // 子时序 1: 虚线飞出一半时，原宫位文字开始淡出
+    addAnimSubTimer(() => {
+      const originId = (step.motionType === 'star') ? 'animOriginMotionStar' : 'animOriginMotionDoor';
+      const originEl = document.getElementById(originId);
+      if (originEl) {
+        originEl.classList.add('is-fading-out');
+      }
+    }, fadeOutDelay);
+
+    // 子时序 2: 虚线抵达目标宫，原宫位文字完全隐去，新宫位文字与天盘干落位显现
+    addAnimSubTimer(() => {
+      const originId = (step.motionType === 'star') ? 'animOriginMotionStar' : 'animOriginMotionDoor';
+      const originEl = document.getElementById(originId);
+      if (originEl) {
+        originEl.style.visibility = 'hidden';
+        originEl.style.opacity = '0';
+      }
+
+      const targetId = (step.motionType === 'star') ? 'animTargetMotionStar' : 'animTargetMotionDoor';
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.classList.remove('is-waiting');
+        targetEl.classList.add('anim-symbol-drop');
+      }
+
+      const targetTgs = document.querySelectorAll('.anim-target-motion-tg');
+      targetTgs.forEach(el => {
+        el.classList.remove('is-waiting');
+        el.classList.add('anim-symbol-drop');
+      });
+    }, arriveDelay);
+  }
+
+  // 5. 计算下一跳时间
+  const stepDuration = Math.round(step.duration * factor);
+  boardAnimState.timerId = setTimeout(() => {
+    boardAnimState.stepIdx++;
+    playAnimStep();
+  }, stepDuration);
+}
+
+function stopBoardAnimation(finishAndRestore = true) {
+  if (boardAnimState.timerId) {
+    clearTimeout(boardAnimState.timerId);
+    boardAnimState.timerId = null;
+  }
+  clearAnimSubTimers();
+  boardAnimState.running = false;
+  boardAnimState.paused = false;
+
+  clearAnimationArrow();
+
+  const banner = document.getElementById('boardAnimBanner');
+  if (banner) banner.style.display = 'none';
+  const toggleBtn = document.getElementById('btnStartBoardAnimation');
+  if (toggleBtn) toggleBtn.classList.remove('is-active');
+
+  const cardSection = document.getElementById('boardCardSection');
+  if (cardSection) cardSection.classList.remove('is-anim-active');
+
+  const grid = document.getElementById('nineGrid');
+  if (grid) grid.classList.remove('is-animating-board');
+
+  for (let g = 1; g <= 9; g++) {
+    const cell = document.getElementById(`cellGong${g}`);
+    if (cell) cell.classList.remove('is-anim-highlight', 'is-anim-origin');
+  }
+
+  if (finishAndRestore && boardAnimState.pan) {
+    renderNinePalaces(boardAnimState.pan);
+    if (!state.isPendingReveal) {
+      renderKeyingAnalysis(boardAnimState.pan, state.selectedGong);
+    }
+  }
+}
+
+// 初始化九宫格动态演盘控制条事件
+function initBoardAnimationControls() {
+  const btnStart = document.getElementById('btnStartBoardAnimation');
+  if (btnStart) btnStart.addEventListener('click', startBoardAnimation);
+
+  const btnPause = document.getElementById('btnAnimPause');
+  const iconPause = document.getElementById('animPauseIcon');
+  if (btnPause) {
+    btnPause.addEventListener('click', () => {
+      if (!boardAnimState.running) return;
+      if (boardAnimState.paused) {
+        boardAnimState.paused = false;
+        if (iconPause) iconPause.textContent = '⏸';
+        playAnimStep();
+      } else {
+        boardAnimState.paused = true;
+        if (boardAnimState.timerId) clearTimeout(boardAnimState.timerId);
+        clearAnimSubTimers();
+        if (iconPause) iconPause.textContent = '▶';
+      }
+    });
+  }
+
+  const btnSpeed = document.getElementById('btnAnimSpeed');
+  const txtSpeed = document.getElementById('animSpeedText');
+  if (btnSpeed) {
+    btnSpeed.addEventListener('click', () => {
+      boardAnimState.speedIdx = (boardAnimState.speedIdx + 1) % boardAnimState.speedOptions.length;
+      const curSpeed = boardAnimState.speedOptions[boardAnimState.speedIdx];
+      if (txtSpeed) txtSpeed.textContent = curSpeed.label;
+    });
+  }
+
+  const btnSkip = document.getElementById('btnAnimSkip');
+  if (btnSkip) {
+    btnSkip.addEventListener('click', () => {
+      stopBoardAnimation(true);
+      showToast('已直接呈现全盘排盘结果');
+    });
+  }
+}
+
+// ========================================================
+// 分步排盘讲解与练习模式
+// ========================================================
+const stepsState = { steps: [], idx: 0, pan: null, practice: false, answered: false };
+
+function openStepsModal() {
+  if (blockIfPending('排盘过程')) return;
+  if (!state.currentPan) executePaipan();
+  stepsState.pan = state.currentPan;
+  stepsState.steps = buildPaipanSteps(stepsState.pan);
+  stepsState.idx = 0;
+  stepsState.answered = false;
+  renderStepsView();
+  openModal('modalSteps');
+}
+
+function renderStepsView() {
+  const steps = stepsState.steps;
+  const idx = stepsState.idx;
+  const pan = stepsState.pan;
+  const step = steps[idx];
+  if (!step || !pan) return;
+  const quizActive = !!(stepsState.practice && step.quiz && !stepsState.answered);
+  // 练习模式下，作答前只显示上一步的图层
+  const layers = quizActive && idx > 0 ? steps[idx - 1].layers : step.layers;
+
+  const progress = document.getElementById('stepsProgress');
+  if (progress) {
+    progress.innerHTML = steps.map((s, i) => `<button type="button" class="steps-dot ${i === idx ? 'is-current' : ''} ${i < idx ? 'is-done' : ''}" data-step="${i}" title="${escapeHtml(s.title)}">${i + 1}</button>`).join('');
+    progress.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
+      stepsState.idx = parseInt(b.dataset.step);
+      stepsState.answered = false;
+      renderStepsView();
+    }));
+  }
+
+  const order = [4, 9, 2, 3, 5, 7, 8, 1, 6];
+  const hl = new Set(quizActive ? [] : (step.highlight || []));
+  const arrowFrom = new Set(quizActive ? [] : (step.arrows || []).map(a => a[0]));
+  const board = document.getElementById('stepsBoard');
+  if (board) {
+    board.innerHTML = order.map(g => {
+      const c = cellLayerContent(pan, g, layers);
+      const isCenterZhuan = g === 5 && pan.paipanMethod === 'zhuan';
+      return `
+        <div class="steps-cell ${hl.has(g) ? 'is-hl' : ''} ${arrowFrom.has(g) ? 'is-from' : ''} ${quizActive ? 'is-quiz' : ''}" data-gong="${g}">
+          <div class="steps-cell-head"><span>${c.gua}</span><span>${c.zhi}</span></div>
+          ${c.spirit && !isCenterZhuan ? `<div class="steps-l steps-spirit">${escapeHtml(c.spirit)}</div>` : ''}
+          ${c.star && !isCenterZhuan ? `<div class="steps-l steps-star">${escapeHtml(c.star)}</div>` : ''}
+          ${c.door && !isCenterZhuan ? `<div class="steps-l steps-door">${escapeHtml(c.door)}</div>` : ''}
+          <div class="steps-gan">
+            ${c.tiangan && !isCenterZhuan ? `<span class="steps-tg" title="天盘干">${escapeHtml(c.tiangan)}</span>` : ''}
+            ${c.dipan ? `<span class="steps-dg" title="地盘干">${escapeHtml(c.dipan)}</span>` : ''}
+          </div>
+          ${(c.kong || c.ma) ? `<div class="steps-marks">${c.kong ? '<span class="steps-kong">空</span>' : ''}${c.ma ? '<span class="steps-ma">马</span>' : ''}</div>` : ''}
+        </div>`;
+    }).join('');
+    if (quizActive) {
+      board.querySelectorAll('.steps-cell').forEach(cell => cell.addEventListener('click', () => answerStepQuiz(parseInt(cell.dataset.gong))));
+    }
+  }
+
+  const setHtml = (id, html) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  };
+  setHtml('stepsTitle', escapeHtml(step.title));
+  setHtml('stepsRule', escapeHtml(step.rule));
+  const quizEl = document.getElementById('stepsQuiz');
+  if (quizActive) {
+    setHtml('stepsDetail', '<span class="steps-hidden-hint">（练习模式：先在九宫上点出你的答案，再看讲解）</span>');
+    if (quizEl) {
+      quizEl.style.display = 'block';
+      quizEl.classList.remove('is-wrong');
+      quizEl.textContent = `❓ ${step.quiz.prompt}`;
+    }
+  } else {
+    setHtml('stepsDetail', escapeHtml(step.detail));
+    if (quizEl && !(stepsState.practice && step.quiz && stepsState.answered)) quizEl.style.display = 'none';
+  }
+
+  const prev = document.getElementById('btnStepsPrev');
+  const next = document.getElementById('btnStepsNext');
+  if (prev) prev.disabled = idx === 0;
+  if (next) next.textContent = idx === steps.length - 1 ? '完成' : (quizActive ? '跳过，看答案' : '下一步');
+}
+
+function answerStepQuiz(g) {
+  const step = stepsState.steps[stepsState.idx];
+  if (!step || !step.quiz) return;
+  const ok = step.quiz.answer.includes(g);
+  stepsState.answered = true;
+  renderStepsView();
+  const quizEl = document.getElementById('stepsQuiz');
+  if (quizEl) {
+    quizEl.style.display = 'block';
+    const names = step.quiz.answer.map(x => `${GONG_CN[x] || ''}${GONG_NUM[x]}宫`).join('、');
+    quizEl.textContent = ok
+      ? `✅ 答对了：${names}`
+      : `❌ 你点的是${(GONG_CN[g] || '') + GONG_NUM[g]}宫，正确答案是${names}。对照下面的讲解再走一遍。`;
+    quizEl.classList.toggle('is-wrong', !ok);
+  }
+}
+
+function initStepsModal() {
+  initBoardAnimationControls();
+  ['btnOpenSteps', 'btnBottomSteps'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', startBoardAnimation);
+  });
+  const prev = document.getElementById('btnStepsPrev');
+  const next = document.getElementById('btnStepsNext');
+  const chk = document.getElementById('chkStepsPractice');
+  if (prev) prev.addEventListener('click', () => {
+    if (stepsState.idx > 0) {
+      stepsState.idx--;
+      stepsState.answered = false;
+      renderStepsView();
+    }
+  });
+  if (next) next.addEventListener('click', () => {
+    const step = stepsState.steps[stepsState.idx];
+    if (stepsState.practice && step && step.quiz && !stepsState.answered) {
+      stepsState.answered = true;
+      renderStepsView();
+      return;
+    }
+    if (stepsState.idx >= stepsState.steps.length - 1) {
+      closeModal('modalSteps');
+      return;
+    }
+    stepsState.idx++;
+    stepsState.answered = false;
+    renderStepsView();
+  });
+  if (chk) {
+    try { chk.checked = localStorage.getItem('qimen_steps_practice') === '1'; } catch (e) {}
+    stepsState.practice = chk.checked;
+    chk.addEventListener('change', () => {
+      stepsState.practice = chk.checked;
+      stepsState.answered = false;
+      try { localStorage.setItem('qimen_steps_practice', chk.checked ? '1' : '0'); } catch (e) {}
+      renderStepsView();
+    });
+  }
+}
+
+// ========================================================
+// 运筹：以此刻另起一盘，按目的选宫，落地五要素
+// ========================================================
+const yunchouState = { pan: null, res: null };
+
+function openYunchouModal() {
+  if (blockIfPending('运筹')) return;
+  openModal('modalYunchou');
+}
+
+function runYunchou() {
+  const now = new Date();
+  const pref = preferredCastSettings();
+  try {
+    // 运筹盘独立计算：不改主盘、不动起局记录
+    const pan = paipan({
+      year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate(),
+      hour: now.getHours(), minute: now.getMinutes(),
+      longitude: state.longitude, cityName: state.cityName,
+      dingjuMethod: pref.dingjuMethod, paipanMethod: pref.paipanMethod, zishi: pref.zishi
+    });
+    const purposeKey = document.getElementById('selYunchouPurpose').value;
+    const dayGan = document.getElementById('selYunchouDayGan').value;
+    const res = analyzeYunchou(pan, purposeKey, dayGan);
+    yunchouState.pan = pan;
+    yunchouState.res = res;
+    renderYunchouResult(pan, res);
+  } catch (err) {
+    console.error(err);
+    showToast('运筹盘计算失败：' + err.message);
+  }
+}
+
+function renderYunchouResult(pan, res) {
+  const box = document.getElementById('yunchouResult');
+  if (!box) return;
+  const p = pan.pillars;
+  const ri = pan.rawInput;
+  const head = `<div class="yunchou-pan-head">运筹盘：${ri.year}-${String(ri.month).padStart(2, '0')}-${String(ri.day).padStart(2, '0')} ${String(ri.hour).padStart(2, '0')}:${String(ri.minute).padStart(2, '0')} ｜ ${p.year} ${p.month} ${p.day} ${p.hour} ｜ ${escapeHtml(pan.dingju.desc)} ｜ 当事人日干 ${escapeHtml(res.dayGan)}</div>`;
+  const cands = res.candidates.slice(0, 5).map(c => `
+    <li class="yunchou-cand ${c.bad.length ? 'is-bad' : ''} ${res.best && res.best.f.g === c.f.g ? 'is-best' : ''}">
+      <div class="yunchou-cand-head"><strong>${escapeHtml(c.f.name)} · ${escapeHtml(c.f.direction)}</strong><span>${c.score} 分</span></div>
+      <div class="yunchou-cand-symbols">${escapeHtml([c.f.tg + '加' + c.f.dg, c.f.star, c.f.door, c.f.spirit].filter(Boolean).join(' · '))}</div>
+      <div class="yunchou-cand-parts">${escapeHtml(c.parts.join('；') || '—')}</div>
+      ${c.bad.length ? `<div class="yunchou-cand-bad">不可用：${escapeHtml(c.bad.join('、'))}</div>` : ''}
+      ${c.warn.length ? `<div class="yunchou-cand-warn">${escapeHtml(c.warn.join('；'))}</div>` : ''}
+    </li>`).join('');
+  const plan = res.plan.length ? `
+    <div class="yunchou-section-title">落地五要素</div>
+    <ul class="yunchou-plan">${res.plan.map(x => `<li><strong>${escapeHtml(x.k)}</strong>${escapeHtml(x.v)}</li>`).join('')}</ul>` : '';
+  box.innerHTML = `
+    ${head}
+    <div class="yunchou-summary ${res.best ? '' : 'is-none'}">${escapeHtml(res.summary)}</div>
+    ${cands ? `<div class="yunchou-section-title">候选宫位</div><ul class="yunchou-cands">${cands}</ul>` : ''}
+    ${plan}
+    <div class="yunchou-section-title">边界</div>
+    <ul class="yunchou-notes">${res.notes.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`;
+}
+
+function initYunchouModal() {
+  const sel = document.getElementById('selYunchouPurpose');
+  if (sel) {
+    sel.innerHTML = YUNCHOU_PURPOSES.map(p => `<option value="${p.key}">${escapeHtml(p.label)}</option>`).join('');
+  }
+  ['btnOpenYunchou', 'btnBottomYunchou'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', openYunchouModal);
+  });
+  const btnCast = document.getElementById('btnYunchouCast');
+  if (btnCast) btnCast.addEventListener('click', runYunchou);
+  const btnToNotes = document.getElementById('btnYunchouToNotes');
+  if (btnToNotes) btnToNotes.addEventListener('click', () => {
+    if (!yunchouState.res) {
+      showToast('先起运筹盘');
+      return;
+    }
+    if (!state.activeRecordId) {
+      showToast('当前没有锁定的起局记录：先立即起盘或保存当前格局');
+      return;
+    }
+    const text = yunchouToText(yunchouState.pan, yunchouState.res);
+    updateRecord(state.activeRecordId, r => {
+      r.notes = r.notes || {};
+      r.notes.yunchou = (r.notes.yunchou ? r.notes.yunchou.replace(/\s+$/, '') + '\n\n' : '') + text;
+      if (!r.notes.yunchouDate) r.notes.yunchouDate = todayStr();
+      rebuildFollowUps(r);
+    });
+    refreshCaseList(state.activeRecordId);
+    showToast('已写入本局断事笔记，并按今天生成第 3、8 天回访');
+  });
+}

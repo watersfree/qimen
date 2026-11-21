@@ -13,7 +13,7 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./favicon.ico">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./css/style.css?v=96">
+  <link rel="stylesheet" href="./css/style.css?v=124">
 </head>
 <body>
 
@@ -59,6 +59,7 @@
             <div class="ju-banner">
               <span class="badge-pill-primary" id="txtJuDesc">霜降上元阴五局</span>
               <span class="badge-tag-tonal" id="txtMethodDesc">置闰排宫法</span>
+              <span class="lock-badge" id="txtLockBadge" style="display: none;"></span>
             </div>
           </div>
 
@@ -120,7 +121,29 @@
         </section>
 
         <!-- 九宫盘面卡片 -->
-        <section class="m3-card m3-card-elevated board-card" id="boardCardSection">
+        <section class="m3-card m3-card-elevated board-card" id="boardCardSection" style="position: relative;">
+          <!-- 防剧透待揭盘遮罩层 (立即起盘后先立用神再揭盘) -->
+          <div class="board-pending-overlay" id="boardPendingOverlay" style="display: none;">
+            <div class="board-pending-card">
+              <div class="pending-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
+                <span>起局时刻已锁定</span>
+              </div>
+              <div class="pending-time" id="txtPendingLockedTime">2026年10月20日 21:12</div>
+              <div class="pending-title">先立用神 · 待揭盘面</div>
+              <div class="pending-desc">为防先窥盘面、后悔改占，请先明确所问事项并选取用神</div>
+              <div class="pending-actions">
+                <button type="button" class="m3-btn m3-btn-filled" id="btnOverlayPickYongShen">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+                  <span>选取用神并揭盘</span>
+                </button>
+                <button type="button" class="m3-btn m3-btn-tonal" id="btnOverlayDirectReveal" title="直接揭晓当前盘面（不特别指定用神）">
+                  <span>直接揭盘</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="board-card-header">
             <div class="board-card-title">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
@@ -134,6 +157,28 @@
                 <span class="m3-slider"></span>
               </div>
             </label>
+          </div>
+
+          <!-- 动态演盘悬浮控制与解说条 -->
+          <div class="board-anim-banner" id="boardAnimBanner" style="display: none;">
+            <div class="anim-banner-left">
+              <span class="anim-stage-badge" id="animStageBadge">地盘</span>
+              <span class="anim-step-desc" id="animStepDesc">准备排盘推演...</span>
+            </div>
+            <div class="anim-banner-right">
+              <button type="button" class="anim-banner-btn" id="btnAnimPause" title="暂停/继续演示">
+                <span id="animPauseIcon">⏸</span>
+              </button>
+              <button type="button" class="anim-banner-btn" id="btnAnimSpeed" title="调整演盘速度">
+                <span id="animSpeedText">1x</span>
+              </button>
+              <button type="button" class="anim-banner-btn anim-btn-skip" id="btnAnimSkip" title="跳过演示，直接查看最终排盘结果">
+                跳过
+              </button>
+            </div>
+            <div class="anim-progress-track">
+              <div class="anim-progress-bar" id="animProgressBar"></div>
+            </div>
           </div>
 
           <!-- 3x3 九宫网格 -->
@@ -158,7 +203,17 @@
             <div class="palace-cell" data-gong="1" id="cellGong1"></div>
             <!-- 乾六 (Northwest) -->
             <div class="palace-cell" data-gong="6" id="cellGong6"></div>
+
+            <!-- 演盘流光引导箭头 SVG 图层 -->
+            <svg class="board-anim-arrow-overlay" id="boardAnimArrowLayer"></svg>
+            <!-- 地盘九宫关系层 SVG 图层 (生克连线、空亡看对宫、马星去向、暗冲) -->
+            <svg class="dipan-relation-overlay" id="dipanRelationOverlay"></svg>
           </div>
+
+          <!-- 九宫盘面卡片右下角演盘按钮 (圆形图标按钮) -->
+          <button type="button" class="board-anim-corner-btn" id="btnStartBoardAnimation" title="动态演示排盘推导过程" aria-label="动态演盘">
+            <span class="anim-btn-icon">▶</span>
+          </button>
         </section>
 
         <!-- 宫位克应研判卡片 -->
@@ -168,8 +223,8 @@
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
               <span id="keyingTitle">『坤宫』克应研判</span>
             </div>
-            <button class="m3-btn-subtle keying-toggle-btn" id="btnToggleKeyingDetail" type="button" title="点击展开天盘干、门状态、地盘干">
-              <span class="toggle-text" id="txtToggleKeyingDetail">展开详细</span>
+            <button class="m3-btn-subtle keying-toggle-btn is-active" id="btnToggleKeyingDetail" type="button" title="点击收起为精简模式 (仅展示宫位与十干克应)">
+              <span class="toggle-text" id="txtToggleKeyingDetail">收起精简</span>
             </button>
           </div>
           <div class="keying-scroll-container" id="keyingContent">
@@ -225,9 +280,9 @@
 
           <!-- 移动端万年历下方快捷起盘操作栏 -->
           <div class="cal-bottom-actions">
-            <button class="m3-btn m3-btn-filled cal-btn-cast-now" id="btnCalCastNow" type="button" title="重置为当前实时时间并立即起盘切回盘面">
+            <button class="m3-btn m3-btn-filled cal-btn-cast-now" id="btnCalCastNow" type="button" title="获取当前实时时间并立即起盘（先取用神后揭盘）">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
-              <span>现在起盘</span>
+              <span>立即起盘</span>
             </button>
             <button class="m3-btn m3-btn-tonal cal-btn-view-pan" id="btnCalViewPan" type="button" title="切回盘面查看当前选定日期的排盘">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
@@ -254,24 +309,76 @@
               <button class="m3-segment-btn" data-value="fei">飞宫法 (飞盘)</button>
             </div>
 
-            <!-- 指定局数 -->
-            <select id="selManualJu" class="m3-select">
-              <option value="auto">自动起局</option>
-              <optgroup label="阳遁">
-                <option value="阳1">阳一局</option><option value="阳2">阳二局</option>
-                <option value="阳3">阳三局</option><option value="阳4">阳四局</option>
-                <option value="阳5">阳五局</option><option value="阳6">阳六局</option>
-                <option value="阳7">阳七局</option><option value="阳8">阳八局</option>
-                <option value="阳9">阳九局</option>
-              </optgroup>
-              <optgroup label="阴遁">
-                <option value="阴1">阴一局</option><option value="阴2">阴二局</option>
-                <option value="阴3">阴三局</option><option value="阴4">阴四局</option>
-                <option value="阴5">阴五局</option><option value="阴6">阴六局</option>
-                <option value="阴7">阴七局</option><option value="阴8">阴八局</option>
-                <option value="阴9">阴九局</option>
-              </optgroup>
-            </select>
+            <!-- 指定局数快捷选择器 -->
+            <div class="manual-ju-picker-wrap" id="wrapManualJuPicker">
+              <button type="button" class="manual-ju-trigger" id="btnManualJuTrigger" aria-haspopup="true" aria-expanded="false" title="指定局数 (可快速覆盖节气起局)">
+                <span class="manual-ju-trigger-text" id="txtManualJuTrigger">自动起局</span>
+                <svg class="manual-ju-trigger-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+                </svg>
+              </button>
+
+              <!-- 悬浮紧凑矩阵面板 -->
+              <div class="manual-ju-popover" id="popoverManualJu" role="dialog" aria-label="指定局数矩阵选择">
+                <div class="ju-popover-header">
+                  <button type="button" class="ju-btn-auto active" id="btnJuAuto" data-ju="auto">
+                    <span class="ju-auto-icon">⚡</span>
+                    <span class="ju-auto-title">自动起局</span>
+                    <span class="ju-auto-desc">(恢复节气日干推算)</span>
+                  </button>
+                </div>
+                <div class="ju-popover-divider"></div>
+                <div class="ju-popover-body">
+                  <div class="ju-popover-row">
+                    <span class="ju-row-badge ju-badge-yang">阳遁</span>
+                    <div class="ju-num-grid">
+                      <button type="button" class="ju-num-chip" data-ju="阳1" title="阳一局">一</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳2" title="阳二局">二</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳3" title="阳三局">三</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳4" title="阳四局">四</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳5" title="阳五局">五</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳6" title="阳六局">六</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳7" title="阳七局">七</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳8" title="阳八局">八</button>
+                      <button type="button" class="ju-num-chip" data-ju="阳9" title="阳九局">九</button>
+                    </div>
+                  </div>
+                  <div class="ju-popover-row">
+                    <span class="ju-row-badge ju-badge-yin">阴遁</span>
+                    <div class="ju-num-grid">
+                      <button type="button" class="ju-num-chip" data-ju="阴1" title="阴一局">一</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴2" title="阴二局">二</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴3" title="阴三局">三</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴4" title="阴四局">四</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴5" title="阴五局">五</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴6" title="阴六局">六</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴7" title="阴七局">七</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴8" title="阴八局">八</button>
+                      <button type="button" class="ju-num-chip" data-ju="阴9" title="阴九局">九</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 底层保留隐藏的 select，确保既有逻辑 100% 兼容 -->
+              <select id="selManualJu" class="m3-select" style="display:none;" tabindex="-1" aria-hidden="true">
+                <option value="auto">自动起局</option>
+                <optgroup label="阳遁">
+                  <option value="阳1">阳一局</option><option value="阳2">阳二局</option>
+                  <option value="阳3">阳三局</option><option value="阳4">阳四局</option>
+                  <option value="阳5">阳五局</option><option value="阳6">阳六局</option>
+                  <option value="阳7">阳七局</option><option value="阳8">阳八局</option>
+                  <option value="阳9">阳九局</option>
+                </optgroup>
+                <optgroup label="阴遁">
+                  <option value="阴1">阴一局</option><option value="阴2">阴二局</option>
+                  <option value="阴3">阴三局</option><option value="阴4">阴四局</option>
+                  <option value="阴5">阴五局</option><option value="阴6">阴六局</option>
+                  <option value="阴7">阴七局</option><option value="阴8">阴八局</option>
+                  <option value="阴9">阴九局</option>
+                </optgroup>
+              </select>
+            </div>
           </div>
 
           <div class="ctrl-section-title">真太阳时校正</div>
@@ -302,7 +409,7 @@
             <input type="number" id="selPanDay" class="m3-input time-num-input" min="1" max="31" placeholder="日">日
             <input type="number" id="selPanHour" class="m3-input time-num-input" min="0" max="23" placeholder="时">时
             <input type="number" id="selPanMinute" class="m3-input time-num-input" min="0" max="59" placeholder="分">分
-            <button class="m3-btn m3-btn-tonal" id="btnExecutePan" style="height: 34px; padding: 0 14px; font-weight: 700;">起盘</button>
+            <button class="m3-btn m3-btn-filled" id="btnExecutePan" style="height: 32px; padding: 0 12px; font-weight: 700; white-space: nowrap; margin-left: auto;" title="按上方微调的时间重新排盘">按此起盘</button>
           </div>
 
           <div class="m3-field-group baoshi-baoshu-row" style="padding-top: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
@@ -339,6 +446,7 @@
             <span>格局案例库 (点击预览/双击起局)</span>
             <span style="font-size: 12px; color: var(--md-sys-color-outline);" id="txtCaseCount">0 个案例</span>
           </div>
+          <div class="case-due-banner" id="caseDueBanner" style="display: none;"></div>
           <select class="cases-select-box" id="selCaseList" size="3"></select>
 
           <!-- 空状态提示 (当无案例时展示友好指引) -->
@@ -353,7 +461,8 @@
               <strong style="color: var(--md-sys-color-primary);" id="caseDetailTitle">案例详情</strong>
               <span style="font-size: 11px; color: var(--md-sys-color-outline);" id="caseDetailTime"></span>
             </div>
-            <div id="caseDetailSummary" style="font-size: 11.5px; color: var(--md-sys-color-primary); margin-bottom: 4px; font-weight: 600;"></div>
+            <div id="caseDetailSummary" style="font-size: 11.5px; color: var(--md-sys-color-primary); margin-bottom: 2px; font-weight: 600;"></div>
+            <div id="caseDetailMeta" class="case-detail-meta"></div>
             <div style="margin-bottom: 4px;">
               <span style="color: var(--md-sys-color-outline);">所问问题：</span>
               <span id="caseDetailQuestion" style="color: var(--md-sys-color-on-surface); font-weight: 500;"></span>
@@ -362,8 +471,9 @@
               <span style="color: var(--md-sys-color-outline);">断语笔记：</span>
               <div id="caseDetailRemark" style="color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; max-height: 80px; overflow-y: auto; background: var(--md-sys-color-surface-container-lowest); padding: 4px 8px; border-radius: 4px; margin-top: 2px;"></div>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-              <button class="m3-btn m3-btn-tonal" type="button" id="btnDetailEditCase" style="height: 32px; font-size: 12.5px; padding: 0 10px;">编辑此案例</button>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+              <button class="m3-btn m3-btn-outlined btn-case-danger" type="button" id="btnDeleteCase" style="height: 32px; font-size: 12.5px; padding: 0 10px;" title="永久删除此案例">删除案例</button>
+              <button class="m3-btn m3-btn-tonal" type="button" id="btnDetailNotes" style="height: 32px; font-size: 12.5px; padding: 0 10px;" title="编辑案例标题、问题、断事笔记、应期与反馈">笔记回访</button>
               <button class="m3-btn m3-btn-filled" type="button" id="btnLoadSelectedCase" style="height: 32px; font-size: 12.5px; padding: 0 12px;">读取并复原此盘</button>
             </div>
           </div>
@@ -371,8 +481,11 @@
           <div class="cases-actions-row">
             <button class="m3-btn m3-btn-filled" id="btnSaveCase" title="保存当前盘面至案例库">保存当前格局</button>
             <button class="m3-btn m3-btn-tonal" id="btnOpenFindPattern" title="按干支/星门条件筛选格局">查找格局</button>
-            <button class="m3-btn m3-btn-tonal" id="btnEditCase" title="编辑选中的案例信息与笔记">编辑</button>
-            <button class="m3-btn m3-btn-outlined" id="btnDeleteCase" title="删除选中的历史案例">删除</button>
+          </div>
+          <div class="cases-actions-row cases-backup-row">
+            <button class="m3-btn m3-btn-outlined" id="btnExportCases" type="button" title="把全部案例、盘面快照、笔记和反馈导出为 JSON 备份文件">导出备份</button>
+            <button class="m3-btn m3-btn-outlined" id="btnImportCases" type="button" title="从 JSON 备份文件导入（按记录合并，不会覆盖较新的内容）">导入备份</button>
+            <input type="file" id="fileImportCases" accept="application/json,.json" style="display: none;">
           </div>
         </section>
 
@@ -385,26 +498,23 @@
     <div class="bottom-actions-left">
       <!-- 1. 核心起局组 -->
       <div class="toolbar-group">
-        <button class="m3-btn m3-btn-filled" id="btnToolbarNow" title="一键重置为当前系统时间并起局">现在时刻</button>
+        <button class="m3-btn m3-btn-filled" id="btnToolbarNow" title="一键获取当前实时时间并立即起盘（先取用神后揭盘）">立即起盘</button>
         <button class="m3-btn m3-btn-tonal" id="btnBottomManual" title="手动录入其他盘面进行分析">手动录入</button>
       </div>
 
-      <!-- 2. 研判速查组 -->
+      <!-- 2. 研判与演盘组 -->
       <div class="toolbar-group">
         <button class="m3-btn m3-btn-tonal" id="btnSelectYongShen" title="选取奇门用神并在天盘以虚线红框标注">选取用神</button>
         <button class="m3-btn m3-btn-tonal" id="btnBottomKeying" title="速查九宫全盘综合克应研判">全盘克应</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomSteps" title="在九宫盘面上动态演示本盘推导过程">动态演盘</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomYunchou" title="另起运筹盘，按目的选宫借气">运筹</button>
       </div>
 
-      <!-- 3. 复制输出组 -->
+      <!-- 3. 记录与留存组 -->
       <div class="toolbar-group">
-        <button class="m3-btn m3-btn-tonal" id="btnBottomCopy" title="复制格式化排盘至剪贴板">复制排盘</button>
-        <button class="m3-btn m3-btn-tonal" id="btnBottomCopyYongShen" title="复制所问事项与用神落宫分析">复制用神</button>
-      </div>
-
-      <!-- 4. 格局管理组 -->
-      <div class="toolbar-group">
-        <button class="m3-btn m3-btn-tonal" id="btnBottomFindPattern" title="搜索经典格局案例">查找格局</button>
         <button class="m3-btn m3-btn-tonal" id="btnBottomSave" title="将当前盘面保存至本地格局案例库">保存格局</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomNotes" title="本局结构化断事笔记与回访">断事笔记</button>
+        <button class="m3-btn m3-btn-tonal" id="btnBottomCopy" title="复制格式化排盘至剪贴板">复制排盘</button>
       </div>
     </div>
     <div class="bottom-status-right">
@@ -552,6 +662,13 @@
         <div class="settings-section" style="margin-top: 10px;">
           <div class="settings-section-title">断局与研判偏好</div>
           <div class="settings-row settings-row-switch">
+            <span class="settings-label">动态演盘</span>
+            <label class="m3-switch-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+              <input type="checkbox" id="chkSettingAutoAnimOnYongshen" class="m3-checkbox">
+              <span>首次选取用神之后开始动态演盘</span>
+            </label>
+          </div>
+          <div class="settings-row settings-row-switch">
             <span class="settings-label">运筹蒙版</span>
             <label class="m3-switch-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
               <input type="checkbox" id="chkSettingMask" class="m3-checkbox">
@@ -633,7 +750,7 @@
   <!-- M3 保存案例 Dialog -->
   <div class="m3-dialog-scrim" id="modalSaveCase">
     <div class="m3-dialog" style="max-width: 440px;">
-      <div class="m3-dialog-headline">保存格局案例</div>
+      <div class="m3-dialog-headline" id="txtSaveCaseHeadline">保存格局案例</div>
       <div class="m3-dialog-body">
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <label style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
@@ -641,7 +758,10 @@
             <input type="text" id="iptCaseTitle" class="m3-input" placeholder="例如: 测出行合作/求财">
           </label>
           <label style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
-            断语笔记:
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>断语笔记:</span>
+              <button class="m3-btn-subtle" id="btnClearSaveRemark" type="button" style="font-size: 12px; padding: 0 6px; color: var(--md-sys-color-error);">清空笔记</button>
+            </div>
             <textarea id="txtCaseRemark" class="m3-input" style="height: 80px; padding: 8px;" placeholder="记录求测人提问及断卦思路..."></textarea>
           </label>
         </div>
@@ -674,10 +794,7 @@
             <textarea id="txtEditCaseRemark" class="m3-input" style="height: 90px; padding: 8px; font-size: 13px;" placeholder="记录断卦思路、应期研判及后续反馈..."></textarea>
           </label>
 
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--md-sys-color-outline); cursor: pointer; margin-top: 2px;">
-            <input type="checkbox" id="chkEditUpdatePan">
-            <span>同时用当前排盘覆盖此案例的盘面数据</span>
-          </label>
+          <div style="font-size: 12px; color: var(--md-sys-color-outline);">盘面是起局时保存的原盘，只能改文字，不能事后换盘。</div>
         </div>
       </div>
       <div class="m3-dialog-actions">
@@ -828,14 +945,18 @@
   <div class="m3-dialog-scrim" id="modalYongShen">
     <div class="m3-dialog modal-yongshen-dialog">
       <div class="m3-dialog-headline yongshen-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color: var(--md-sys-color-primary); flex-shrink: 0;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">选取用神与所问事项</span>
-        </div>
+        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 700;">选取用神与所问事项</span>
         <button class="m3-icon-btn" data-close="modalYongShen" title="关闭" style="flex-shrink: 0;">✕</button>
       </div>
 
       <div class="m3-dialog-body yongshen-dialog-body" id="modalYongShenBody">
+        <!-- 0. 立即起盘时刻锁定横幅提示 (待揭盘模式下激活展示) -->
+        <div class="yongshen-cast-banner" id="yongshenCastBanner" style="display: none; align-items: center; gap: 8px; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); padding: 8px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 500; margin-bottom: 12px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink: 0;"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
+          <span>起局时刻已锁定：<strong id="txtCastBannerTime"></strong> · 请先确定所问事项与用神</span>
+        </div>
+        <div class="cast-discipline-hint" id="txtCastDiscipline" style="display: none;"></div>
+
         <!-- 1. 所问问题输入 -->
         <div class="yongshen-section">
           <label class="yongshen-section-label" for="iptUserQuestion">
@@ -846,22 +967,39 @@
             <input type="text" id="iptUserQuestion" class="m3-input" style="flex: 1;" placeholder="例如：测工作晋升调动、求财投资利润、恋爱感情走势、身体疾病病灶...">
             <button class="m3-btn m3-btn-subtle" id="btnClearUserQuestion" type="button" style="padding: 0 10px;">清空</button>
           </div>
-          <!-- 常见问事快捷标签 -->
-          <div class="yongshen-quick-questions" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
-            <span style="font-size: 12px; color: var(--md-sys-color-outline); display: flex; align-items: center;">快捷预设:</span>
-            <button type="button" class="yongshen-qchip" data-q="求测自身运势" data-ys="日干">求测自身</button>
-            <button type="button" class="yongshen-qchip" data-q="测工作事业与公司" data-ys="开门,日干">工作事业</button>
-            <button type="button" class="yongshen-qchip" data-q="测本金资金与财运" data-ys="戊,生门">求财资金</button>
-            <button type="button" class="yongshen-qchip" data-q="测生意投资利润" data-ys="生门,戊">投资利润</button>
-            <button type="button" class="yongshen-qchip" data-q="测商务合作合伙" data-ys="六合,日干">合作谈判</button>
-            <button type="button" class="yongshen-qchip" data-q="测恋爱感情婚配" data-ys="乙,庚,六合">恋爱婚配</button>
-            <button type="button" class="yongshen-qchip" data-q="测已婚夫妻婚姻" data-ys="日干,合干">已婚夫妻</button>
-            <button type="button" class="yongshen-qchip" data-q="测身体疾病与健康" data-ys="天芮,日干">疾病健康</button>
-            <button type="button" class="yongshen-qchip" data-q="测领导提拔与贵人" data-ys="值符,年干">领导贵人</button>
-            <button type="button" class="yongshen-qchip" data-q="测子女胎产与下属事物" data-ys="时干">子女下属/失物</button>
-            <button type="button" class="yongshen-qchip" data-q="测失窃小偷盗贼" data-ys="玄武,天蓬">防贼防盗</button>
-            <button type="button" class="yongshen-qchip" data-q="测变动调动出行" data-ys="马星,九天">变动出行</button>
+
+          <!-- 风水宫 / 性别身份全局开关 -->
+          <div class="ys-gender-role-bar" style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; background: var(--md-sys-color-surface-container); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--md-sys-color-outline-variant);">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--md-sys-color-primary);">求测人风水宫 / 身份：</span>
+              <span style="font-size: 11px; color: var(--md-sys-color-outline);">男看乾 · 女看坤 · 长子震 · 长女巽</span>
+            </div>
+            <div class="ys-gender-chips" id="ysGenderChips" style="display: flex; gap: 6px;">
+              <button type="button" class="ys-gender-chip active" data-gender="none">不限</button>
+              <button type="button" class="ys-gender-chip" data-gender="male" data-gong="乾宫">男 (乾六)</button>
+              <button type="button" class="ys-gender-chip" data-gender="female" data-gong="坤宫">女 (坤二)</button>
+              <button type="button" class="ys-gender-chip" data-gender="son" data-gong="震宫">长子 (震三)</button>
+              <button type="button" class="ys-gender-chip" data-gender="daughter" data-gong="巽宫">长女 (巽四)</button>
+            </div>
           </div>
+
+          <!-- 预设分类选项卡 (5大类别) -->
+          <div class="yongshen-category-tabs" id="ysCategoryTabs" style="margin-top: 10px; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+            <button type="button" class="ys-cat-tab active" data-cat="all">全部</button>
+            <button type="button" class="ys-cat-tab" data-cat="人事关系">人事关系</button>
+            <button type="button" class="ys-cat-tab" data-cat="财物经营">财物经营</button>
+            <button type="button" class="ys-cat-tab" data-cat="健康家庭">健康家庭</button>
+            <button type="button" class="ys-cat-tab" data-cat="风水环境">风水环境</button>
+            <button type="button" class="ys-cat-tab" data-cat="动态竞技">动态竞技</button>
+          </div>
+
+          <!-- 常见问事快捷标签容器 -->
+          <div class="yongshen-quick-questions" id="ysPresetsContainer" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
+            <!-- 由 JS 从 YONGSHEN_PRESETS 动态渲染 -->
+          </div>
+
+          <!-- 追问参数展开栏 (带参数预设专用) -->
+          <div class="yongshen-prompt-bar" id="ysPromptBar" style="display: none;"></div>
         </div>
 
         <!-- 2. 已选用神展示区 -->
@@ -904,20 +1042,32 @@
             <span style="font-size: 13px; font-weight: 600;">奇门固定用神标准分类速选：</span>
           </div>
 
-          <!-- 分组 1: 核心人物与四柱 (日/时/年/月/合干) -->
-          <div class="ys-group-box">
-            <div class="ys-group-title">四柱核心用神（日、时最常用）</div>
+          <!-- 标签分类选项卡 (四柱核心、八门、八神、九星、十干像意、特殊用神，避免过长需要下滑) -->
+          <div class="yongshen-category-tabs" id="ysStandardCategoryTabs" style="margin-top: 8px; margin-bottom: 10px; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+            <button type="button" class="ys-cat-tab active" data-group="sizhu">四柱核心</button>
+            <button type="button" class="ys-cat-tab" data-group="bamen">八门</button>
+            <button type="button" class="ys-cat-tab" data-group="bashen">八神</button>
+            <button type="button" class="ys-cat-tab" data-group="jiuxing">九星</button>
+            <button type="button" class="ys-cat-tab" data-group="shigan">十干像意</button>
+            <button type="button" class="ys-cat-tab" data-group="teshu">特殊用神</button>
+          </div>
+
+          <!-- 分组 1: 四柱核心 (sizhu) -->
+          <div class="ys-group-box ys-standard-group-box" data-group="sizhu">
+            <div class="ys-group-title">四柱核心与推导干（日、时最常用）</div>
             <div class="ys-chips-row">
               <label class="ys-chip"><input type="checkbox" value="日干"> <span><b>日干</b>（问事人/求测人）</span></label>
               <label class="ys-chip"><input type="checkbox" value="时干"> <span><b>时干</b>（子女/下属/失物/事态）</span></label>
               <label class="ys-chip"><input type="checkbox" value="年干"> <span><b>年干</b>（领导/长辈/父母）</span></label>
               <label class="ys-chip"><input type="checkbox" value="月干"> <span><b>月干</b>（平辈/同学同事/兄弟姐妹）</span></label>
               <label class="ys-chip"><input type="checkbox" value="合干"> <span><b>合干</b>（配偶/已婚相合干）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="所克之干"> <span><b>所克之干</b>（被告/同性受克方）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="克我之干"> <span><b>克我之干</b>（原告/同性克我方）</span></label>
             </div>
           </div>
 
-          <!-- 分组 2: 财官事门 (戊/开/生/死/休/景/杜/惊/伤) -->
-          <div class="ys-group-box">
+          <!-- 分组 2: 八门 (bamen) -->
+          <div class="ys-group-box ys-standard-group-box" data-group="bamen" style="display: none;">
             <div class="ys-group-title">财官利门 · 八门用神</div>
             <div class="ys-chips-row">
               <label class="ys-chip"><input type="checkbox" value="戊"> <span><b>戊</b>（钱财/资金/投资/大块头）</span></label>
@@ -932,8 +1082,8 @@
             </div>
           </div>
 
-          <!-- 分组 3: 八神用神 (值符/六合/玄武/天蓬/九天/九地/白虎/螣蛇/太阴) -->
-          <div class="ys-group-box">
+          <!-- 分组 3: 八神 (bashen) -->
+          <div class="ys-group-box ys-standard-group-box" data-group="bashen" style="display: none;">
             <div class="ys-group-title">神机大纲 · 八神用神</div>
             <div class="ys-chips-row">
               <label class="ys-chip"><input type="checkbox" value="值符"> <span><b>值符</b>（事态大纲/领导/贵人）</span></label>
@@ -947,8 +1097,8 @@
             </div>
           </div>
 
-          <!-- 分组 4: 九星用神 (天芮/天蓬/天柱/天辅/天心/天任/天冲/天英/天禽) -->
-          <div class="ys-group-box">
+          <!-- 分组 4: 九星 (jiuxing) -->
+          <div class="ys-group-box ys-standard-group-box" data-group="jiuxing" style="display: none;">
             <div class="ys-group-title">星象时机 · 九星用神</div>
             <div class="ys-chips-row">
               <label class="ys-chip"><input type="checkbox" value="天芮"> <span><b>天芮</b>（疾病/病灶/病人/学生）</span></label>
@@ -959,25 +1109,41 @@
               <label class="ys-chip"><input type="checkbox" value="天任"> <span><b>天任</b>（勤劳/实在/农业/助人）</span></label>
               <label class="ys-chip"><input type="checkbox" value="天冲"> <span><b>天冲</b>（冲锋/迅速/鲁莽/体育）</span></label>
               <label class="ys-chip"><input type="checkbox" value="天英"> <span><b>天英</b>（热情/名气/大火/电子）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="天禽"> <span><b>天禽</b>（中正/同天芮寄二宫/厚德）</span></label>
             </div>
           </div>
 
-          <!-- 分组 5: 十天干与特殊 (乙/庚/丙/丁/辛/癸/马星/空亡/乾坤) -->
-          <div class="ys-group-box">
-            <div class="ys-group-title">十干像意与特殊用神</div>
+          <!-- 分组 5: 十干像意 (shigan) -->
+          <div class="ys-group-box ys-standard-group-box" data-group="shigan" style="display: none;">
+            <div class="ys-group-title">十天干像意用神</div>
             <div class="ys-chips-row">
-              <label class="ys-chip"><input type="checkbox" value="乙"> <span><b>乙</b>（恋爱女方/长条/中药）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="庚"> <span><b>庚</b>（恋爱男方/对手/仇人/阻碍）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="乙"> <span><b>乙</b>（恋爱女方/长条/中药/柔软）</span></label>
               <label class="ys-chip"><input type="checkbox" value="丙"> <span><b>丙</b>（月奇/权威/红衣服/乱子）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="丁"> <span><b>丁</b>（星奇/希望/奇迹/小三）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="己"> <span><b>己</b>（陷阱/私欲/拐弯抹角）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="辛"> <span><b>辛</b>（错误/改过/金属/颗粒）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="壬"> <span><b>壬</b>（流水/动荡/大水/迷茫）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="癸"> <span><b>癸</b>（暗昧/消极/污渍/黑衣服）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="丁"> <span><b>丁</b>（星奇/希望/奇迹/小三/文书）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="戊"> <span><b>戊</b>（天门/资本/厚重/大钱）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="己"> <span><b>己</b>（陷阱/私欲/拐弯抹角/低洼）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="庚"> <span><b>庚</b>（恋爱男方/对手/仇人/阻碍）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="辛"> <span><b>辛</b>（错误/改过/金属/颗粒/罪人）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="壬"> <span><b>壬</b>（流水/动荡/大水/迷茫/流动）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="癸"> <span><b>癸</b>（暗昧/消极/污渍/黑衣服/网络）</span></label>
+            </div>
+          </div>
+
+          <!-- 分组 6: 特殊用神 (teshu) -->
+          <div class="ys-group-box ys-standard-group-box" data-group="teshu" style="display: none;">
+            <div class="ys-group-title">地支神煞与八卦九宫</div>
+            <div class="ys-chips-row">
               <label class="ys-chip"><input type="checkbox" value="马星"> <span><b>马星</b>（变动/出行/跑动）</span></label>
               <label class="ys-chip"><input type="checkbox" value="空亡"> <span><b>空亡</b>（虚无/落空/待填实）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="乾宫"> <span><b>乾宫</b>（西北/长辈/圆形/首都）</span></label>
-              <label class="ys-chip"><input type="checkbox" value="坤宫"> <span><b>坤宫</b>（西南/母亲/风水/腹部）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="对冲宫"> <span><b>对冲宫</b>（交易对方/对手方）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="乾宫"> <span><b>乾宫</b>（西北/长辈/男主）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="坤宫"> <span><b>坤宫</b>（西南/母亲/女主/风水）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="坎宫"> <span><b>坎宫</b>（正北/子宫孕位）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="震宫"> <span><b>震宫</b>（正东/长子/主队）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="巽宫"> <span><b>巽宫</b>（东南/长女位）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="艮宫"> <span><b>艮宫</b>（东北/少男）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="兑宫"> <span><b>兑宫</b>（正西/少女/客队）</span></label>
+              <label class="ys-chip"><input type="checkbox" value="离宫"> <span><b>离宫</b>（正南/中女）</span></label>
             </div>
           </div>
 
@@ -1001,19 +1167,99 @@
         <div class="yongshen-action-group-sub">
           <button class="m3-btn m3-btn-subtle" type="button" id="btnResetYongShen" title="清空所有已勾选用神">重置清空</button>
           <button class="m3-btn m3-btn-tonal" type="button" id="btnStartManualGridPick" title="关闭弹窗，直接在九宫格盘面上点击八神、九星、八门、天干、地干进行圈选">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-            <span>手动选取用神</span>
+            <span>手动选取</span>
           </button>
         </div>
         <div class="yongshen-action-group-main">
           <button class="m3-btn m3-btn-outlined" type="button" data-close="modalYongShen">取消</button>
-          <button class="m3-btn m3-btn-filled" type="button" id="btnConfirmYongShen">确定并框选用神</button>
+          <button class="m3-btn m3-btn-filled" type="button" id="btnConfirmYongShen">确定</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- M3 手动录入奇门盘面 Dialog -->
+  <!-- M3 断事笔记 Dialog (简化优化版) -->
+  <div class="m3-dialog-scrim" id="modalCaseNotes">
+    <div class="m3-dialog notes-dialog">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <span id="txtNotesHeadline" style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">断事笔记</span>
+        <button class="m3-icon-btn" data-close="modalCaseNotes" title="关闭" style="flex-shrink: 0;">✕</button>
+      </div>
+      <div class="m3-dialog-body notes-dialog-body" id="notesDialogBody">
+        <!-- 由 app.js 动态生成 -->
+      </div>
+      <div class="m3-dialog-actions">
+        <button class="m3-btn m3-btn-tonal" type="button" id="btnNotesInsertPalaces" title="把当前用神落宫的符号插入断语分析">插入用神宫要素</button>
+        <button class="m3-btn m3-btn-tonal" data-close="modalCaseNotes" type="button">关闭</button>
+        <button class="m3-btn m3-btn-filled" type="button" id="btnNotesSave">保存笔记</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 分步排盘讲解 Dialog -->
+  <div class="m3-dialog-scrim" id="modalSteps">
+    <div class="m3-dialog steps-dialog">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <span>排盘过程 · 分步讲解</span>
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+          <label class="steps-practice-toggle" title="先自己在九宫上点出答案，再看结果">
+            <input type="checkbox" id="chkStepsPractice"> 练习模式
+          </label>
+          <button class="m3-icon-btn" data-close="modalSteps" title="关闭">✕</button>
+        </div>
+      </div>
+      <div class="m3-dialog-body steps-dialog-body">
+        <div class="steps-progress" id="stepsProgress"></div>
+        <div class="steps-layout">
+          <div class="steps-board" id="stepsBoard"></div>
+          <div class="steps-text">
+            <div class="steps-title" id="stepsTitle"></div>
+            <div class="steps-rule" id="stepsRule"></div>
+            <div class="steps-detail" id="stepsDetail"></div>
+            <div class="steps-quiz" id="stepsQuiz" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="m3-dialog-actions">
+        <button class="m3-btn m3-btn-tonal" type="button" id="btnStepsPrev">上一步</button>
+        <button class="m3-btn m3-btn-filled" type="button" id="btnStepsNext">下一步</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- M3 运筹 Dialog -->
+  <div class="m3-dialog-scrim" id="modalYunchou">
+    <div class="m3-dialog yunchou-dialog">
+      <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <span>运筹 · 另起一盘</span>
+        <button class="m3-icon-btn" data-close="modalYunchou" title="关闭" style="flex-shrink: 0;">✕</button>
+      </div>
+      <div class="m3-dialog-body yunchou-dialog-body">
+        <div class="yunchou-intro">预测盘看的是这件事的状态；运筹要以<strong>当下时刻另起一盘</strong>，取真实的天地能量，以当事人为太极点。问法是“我怎样才能达成”，不是“能不能成”。</div>
+        <div class="yunchou-controls">
+          <label>目的
+            <select id="selYunchouPurpose" class="m3-select"></select>
+          </label>
+          <label>当事人日干
+            <select id="selYunchouDayGan" class="m3-select">
+              <option value="">按运筹盘日干</option>
+              <option>甲</option><option>乙</option><option>丙</option><option>丁</option><option>戊</option>
+              <option>己</option><option>庚</option><option>辛</option><option>壬</option><option>癸</option>
+            </select>
+          </label>
+          <button type="button" class="m3-btn m3-btn-filled" id="btnYunchouCast">以此刻起运筹盘</button>
+        </div>
+        <div class="yunchou-result" id="yunchouResult">
+          <div class="yunchou-empty">选择目的后点“以此刻起运筹盘”。运筹盘不会改动主盘，也不影响当前起局记录。</div>
+        </div>
+      </div>
+      <div class="m3-dialog-actions">
+        <button class="m3-btn m3-btn-tonal" type="button" id="btnYunchouToNotes" title="把运筹方案写入本局断事笔记的“运筹方案”">写入断事笔记</button>
+        <button class="m3-btn m3-btn-filled" data-close="modalYunchou" type="button">完成</button>
+      </div>
+    </div>
+  </div>
+
   <div class="m3-dialog-scrim" id="modalManualInput">
     <div class="m3-dialog modal-manual-dialog" style="max-width: 660px; width: 92vw; max-height: 88vh; display: flex; flex-direction: column;">
       <div class="m3-dialog-headline" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
@@ -1203,7 +1449,7 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/app.js?v=125"></script>
 
 </body>
 </html>
