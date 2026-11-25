@@ -50,6 +50,22 @@ function emptyNotes() {
   return n;
 }
 
+// 获取格局案例的规范化友好展示名称（杜绝“无标题格局”）
+export function getRecordDisplayName(item) {
+  if (!item) return '未知格局';
+  const custom = (item.title || item.userQuestion || '').trim();
+  if (custom && custom !== '无标题格局' && custom !== '无标题案例') {
+    return custom;
+  }
+  const p = item.pillars || {};
+  const ju = item.juDesc || (item.dun && item.ju ? `${item.dun}遁${item.ju}局` : '');
+  const gz = (p.day && p.hour) ? `${p.day}日${p.hour}时` : (p.hour ? `${p.hour}时` : '');
+  if (ju && gz) return `${ju} · ${gz}`;
+  if (ju) return ju;
+  if (gz) return gz;
+  return item.dateStr ? `${item.dateStr} 起局` : '奇门排盘案例';
+}
+
 // 旧案例迁移：补齐 id、状态、笔记结构等字段
 function migrate(item) {
   if (!item || typeof item !== 'object') return null;
@@ -66,6 +82,10 @@ function migrate(item) {
   if (item.year && (!item.dateStr || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(item.dateStr))) {
     item.dateStr = formatDateStr(item.year, item.month, item.day, item.hour, item.minute);
   }
+  // 杜绝无标题格局：若标题为空或占位符，自动根据四柱/局数补全
+  if (!item.title || item.title === '无标题格局' || item.title === '无标题案例') {
+    item.title = getRecordDisplayName(item);
+  }
   return item;
 }
 
@@ -78,9 +98,20 @@ export function loadRecords() {
     raw = [];
   }
   if (!Array.isArray(raw)) raw = [];
-  // 旧案例缺 id 时迁移结果必须写回，否则每次读取都会得到不同的 id
-  const needsPersist = raw.some(item => item && typeof item === 'object' && !item.id);
-  const list = raw.map(migrate).filter(Boolean);
+
+  // 历史遗留僵尸草稿自动清洗过滤 (彻底清除之前未揭盘就提前存库产生的大量无标题pending记录)
+  const cleaned = raw.filter(item => {
+    if (!item || typeof item !== 'object') return false;
+    // 尚未揭盘的记录一律不属于保存案例库
+    if (item.status === 'pending') return false;
+    // 无标题、无问题、无断语、无快照的作废记录一律不保留
+    if (item.status === 'void' && !item.title && !item.userQuestion && !item.remark && !item.panSnapshot) return false;
+    return true;
+  });
+
+  // 旧案例缺 id 或含有僵尸待揭盘记录或无标题时迁移结果必须写回
+  const needsPersist = cleaned.length !== raw.length || cleaned.some(item => !item.id || !item.title || item.title === '无标题格局');
+  const list = cleaned.map(migrate).filter(Boolean);
   if (needsPersist) saveRecords(list);
   return list;
 }

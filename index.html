@@ -13,7 +13,7 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./favicon.ico">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./css/style.css?v=124">
+  <link rel="stylesheet" href="./css/style.css?v=129">
 </head>
 <body>
 
@@ -139,6 +139,9 @@
                 </button>
                 <button type="button" class="m3-btn m3-btn-tonal" id="btnOverlayDirectReveal" title="直接揭晓当前盘面（不特别指定用神）">
                   <span>直接揭盘</span>
+                </button>
+                <button type="button" class="m3-btn m3-btn-outlined" id="btnOverlayCancelCast" title="放弃本次起盘，退出待揭盘模式">
+                  <span>放弃起盘</span>
                 </button>
               </div>
             </div>
@@ -278,16 +281,26 @@
             <span id="calTermNext">霜降: 10月23日 17:37</span>
           </div>
 
-          <!-- 移动端万年历下方快捷起盘操作栏 -->
+          <!-- 移动端万年历下方快捷操作栏 (立即起盘、查看盘面、手动录入、运筹) -->
           <div class="cal-bottom-actions">
-            <button class="m3-btn m3-btn-filled cal-btn-cast-now" id="btnCalCastNow" type="button" title="获取当前实时时间并立即起盘（先取用神后揭盘）">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
-              <span>立即起盘</span>
-            </button>
-            <button class="m3-btn m3-btn-tonal cal-btn-view-pan" id="btnCalViewPan" type="button" title="切回盘面查看当前选定日期的排盘">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
-              <span>查看盘面</span>
-            </button>
+            <div class="cal-actions-grid">
+              <button class="m3-btn m3-btn-filled cal-btn-action cal-btn-cast-now" id="btnCalCastNow" type="button" title="获取当前实时时间并立即起盘（先取用神后揭盘）">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
+                <span>立即起盘</span>
+              </button>
+              <button class="m3-btn m3-btn-tonal cal-btn-action cal-btn-view-pan" id="btnCalViewPan" type="button" title="切回盘面查看当前选定日期的排盘">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+                <span>查看盘面</span>
+              </button>
+              <button class="m3-btn m3-btn-tonal cal-btn-action cal-btn-manual" id="btnCalManual" type="button" title="手动录入其他盘面进行分析">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                <span>手动录入</span>
+              </button>
+              <button class="m3-btn m3-btn-tonal cal-btn-action cal-btn-yunchou" id="btnCalYunchou" type="button" title="另起运筹盘，按目的选宫借气">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>
+                <span>运筹</span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -402,14 +415,19 @@
             <button class="m3-btn m3-btn-filled" id="btnQuickTimeApply" type="button" title="识别并快速起盘">识别起盘</button>
           </div>
 
-          <!-- 年月日时分直接键盘可编辑数字输入框 -->
-          <div class="m3-field-group time-direct-inputs">
-            <input type="number" id="selPanYear" class="m3-input time-num-input" min="1900" max="2100" placeholder="年">年
-            <input type="number" id="selPanMonth" class="m3-input time-num-input" min="1" max="12" placeholder="月">月
-            <input type="number" id="selPanDay" class="m3-input time-num-input" min="1" max="31" placeholder="日">日
-            <input type="number" id="selPanHour" class="m3-input time-num-input" min="0" max="23" placeholder="时">时
-            <input type="number" id="selPanMinute" class="m3-input time-num-input" min="0" max="59" placeholder="分">分
-            <button class="m3-btn m3-btn-filled" id="btnExecutePan" style="height: 32px; padding: 0 12px; font-weight: 700; white-space: nowrap; margin-left: auto;" title="按上方微调的时间重新排盘">按此起盘</button>
+          <!-- 年月日时分直接键盘可编辑数字输入框与按此起盘按钮 -->
+          <div class="time-direct-container">
+            <div class="time-direct-inputs">
+              <span class="time-input-unit"><input type="number" id="selPanYear" class="m3-input time-num-input" min="1900" max="2100" placeholder="年"><span class="time-unit-label">年</span></span>
+              <span class="time-input-unit"><input type="number" id="selPanMonth" class="m3-input time-num-input" min="1" max="12" placeholder="月"><span class="time-unit-label">月</span></span>
+              <span class="time-input-unit"><input type="number" id="selPanDay" class="m3-input time-num-input" min="1" max="31" placeholder="日"><span class="time-unit-label">日</span></span>
+              <span class="time-input-unit"><input type="number" id="selPanHour" class="m3-input time-num-input" min="0" max="23" placeholder="时"><span class="time-unit-label">时</span></span>
+              <span class="time-input-unit"><input type="number" id="selPanMinute" class="m3-input time-num-input" min="0" max="59" placeholder="分"><span class="time-unit-label">分</span></span>
+            </div>
+            <button class="m3-btn m3-btn-filled btn-execute-pan" id="btnExecutePan" type="button" title="按上方微调的时间重新排盘">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
+              <span>按此起盘</span>
+            </button>
           </div>
 
           <div class="m3-field-group baoshi-baoshu-row" style="padding-top: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
@@ -447,7 +465,8 @@
             <span style="font-size: 12px; color: var(--md-sys-color-outline);" id="txtCaseCount">0 个案例</span>
           </div>
           <div class="case-due-banner" id="caseDueBanner" style="display: none;"></div>
-          <select class="cases-select-box" id="selCaseList" size="3"></select>
+          <select class="cases-select-box" id="selCaseList" size="3" style="display: none;"></select>
+          <div class="case-modern-list" id="caseModernList"></div>
 
           <!-- 空状态提示 (当无案例时展示友好指引) -->
           <div id="caseEmptyState" class="case-empty-state" style="display: none;">
@@ -455,37 +474,41 @@
             <div class="case-empty-desc">起局排盘后，点击下方「保存当前格局」即可将当前盘面、所问事项与断语笔记保存至本地案例库，便于日后复盘验局。</div>
           </div>
 
-          <!-- 选中案例的详情预览区 (支持阅读问题、笔记与局象并一键复原) -->
-          <div id="caseDetailPanel" class="case-detail-panel" style="display: none; background: var(--md-sys-color-surface-container-high); border-radius: 8px; padding: 10px 12px; border: 1px dashed var(--md-sys-color-outline-variant); font-size: 12.5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <strong style="color: var(--md-sys-color-primary);" id="caseDetailTitle">案例详情</strong>
-              <span style="font-size: 11px; color: var(--md-sys-color-outline);" id="caseDetailTime"></span>
+          <!-- 底部控制与详情操作组 (整体下移至靠近底部导航栏，为上方列表展示更多案例腾出空间) -->
+          <div class="cases-footer-dock" id="casesFooterDock">
+            <!-- 选中案例的详情预览区 (支持阅读问题、笔记与局象并一键复原) -->
+            <div id="caseDetailPanel" class="case-detail-panel" style="display: none; background: var(--md-sys-color-surface-container-high); border-radius: 8px; padding: 10px 12px; border: 1px dashed var(--md-sys-color-outline-variant); font-size: 12.5px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <strong style="color: var(--md-sys-color-primary);" id="caseDetailTitle">案例详情</strong>
+                <span style="font-size: 11px; color: var(--md-sys-color-outline);" id="caseDetailTime"></span>
+              </div>
+              <div id="caseDetailSummary" style="font-size: 11.5px; color: var(--md-sys-color-primary); margin-bottom: 2px; font-weight: 600;"></div>
+              <div id="caseDetailMeta" class="case-detail-meta"></div>
+              <div style="margin-bottom: 4px;">
+                <span style="color: var(--md-sys-color-outline);">所问问题：</span>
+                <span id="caseDetailQuestion" style="color: var(--md-sys-color-on-surface); font-weight: 500;"></span>
+              </div>
+              <div style="margin-bottom: 6px;">
+                <span style="color: var(--md-sys-color-outline);">断语笔记：</span>
+                <div id="caseDetailRemark" style="color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; max-height: 80px; overflow-y: auto; background: var(--md-sys-color-surface-container-lowest); padding: 4px 8px; border-radius: 4px; margin-top: 2px;"></div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+                <button class="m3-btn m3-btn-outlined btn-case-danger" type="button" id="btnDeleteCase" style="height: 32px; font-size: 12.5px; padding: 0 10px;" title="永久删除此案例">删除案例</button>
+                <button class="m3-btn m3-btn-tonal" type="button" id="btnDetailNotes" style="height: 32px; font-size: 12.5px; padding: 0 10px;" title="编辑案例标题、问题、断事笔记、应期与反馈">笔记回访</button>
+                <button class="m3-btn m3-btn-filled" type="button" id="btnLoadSelectedCase" style="height: 32px; font-size: 12.5px; padding: 0 12px;">读取并复原此盘</button>
+              </div>
             </div>
-            <div id="caseDetailSummary" style="font-size: 11.5px; color: var(--md-sys-color-primary); margin-bottom: 2px; font-weight: 600;"></div>
-            <div id="caseDetailMeta" class="case-detail-meta"></div>
-            <div style="margin-bottom: 4px;">
-              <span style="color: var(--md-sys-color-outline);">所问问题：</span>
-              <span id="caseDetailQuestion" style="color: var(--md-sys-color-on-surface); font-weight: 500;"></span>
-            </div>
-            <div style="margin-bottom: 6px;">
-              <span style="color: var(--md-sys-color-outline);">断语笔记：</span>
-              <div id="caseDetailRemark" style="color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; max-height: 80px; overflow-y: auto; background: var(--md-sys-color-surface-container-lowest); padding: 4px 8px; border-radius: 4px; margin-top: 2px;"></div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
-              <button class="m3-btn m3-btn-outlined btn-case-danger" type="button" id="btnDeleteCase" style="height: 32px; font-size: 12.5px; padding: 0 10px;" title="永久删除此案例">删除案例</button>
-              <button class="m3-btn m3-btn-tonal" type="button" id="btnDetailNotes" style="height: 32px; font-size: 12.5px; padding: 0 10px;" title="编辑案例标题、问题、断事笔记、应期与反馈">笔记回访</button>
-              <button class="m3-btn m3-btn-filled" type="button" id="btnLoadSelectedCase" style="height: 32px; font-size: 12.5px; padding: 0 12px;">读取并复原此盘</button>
-            </div>
-          </div>
 
-          <div class="cases-actions-row">
-            <button class="m3-btn m3-btn-filled" id="btnSaveCase" title="保存当前盘面至案例库">保存当前格局</button>
-            <button class="m3-btn m3-btn-tonal" id="btnOpenFindPattern" title="按干支/星门条件筛选格局">查找格局</button>
-          </div>
-          <div class="cases-actions-row cases-backup-row">
-            <button class="m3-btn m3-btn-outlined" id="btnExportCases" type="button" title="把全部案例、盘面快照、笔记和反馈导出为 JSON 备份文件">导出备份</button>
-            <button class="m3-btn m3-btn-outlined" id="btnImportCases" type="button" title="从 JSON 备份文件导入（按记录合并，不会覆盖较新的内容）">导入备份</button>
-            <input type="file" id="fileImportCases" accept="application/json,.json" style="display: none;">
+            <div class="cases-actions-row">
+              <button class="m3-btn m3-btn-filled" id="btnSaveCase" title="保存当前盘面至案例库">保存当前格局</button>
+              <button class="m3-btn m3-btn-tonal" id="btnOpenFindPattern" title="按干支/星门条件筛选格局">查找格局</button>
+            </div>
+            <div class="cases-actions-row cases-backup-row" style="flex-wrap: wrap;">
+              <button class="m3-btn m3-btn-outlined" id="btnExportCases" type="button" title="把全部案例、盘面快照、笔记和反馈导出为 JSON 备份文件">导出备份</button>
+              <button class="m3-btn m3-btn-outlined" id="btnImportCases" type="button" title="从 JSON 备份文件导入（按记录合并，不会覆盖较新的内容）">导入备份</button>
+              <button class="m3-btn m3-btn-outlined btn-case-danger" id="btnClearInvalidCases" type="button" title="一键清理历史未完成或已作废的无效记录">清理无效记录</button>
+              <input type="file" id="fileImportCases" accept="application/json,.json" style="display: none;">
+            </div>
           </div>
         </section>
 
@@ -1167,7 +1190,7 @@
         <div class="yongshen-action-group-sub">
           <button class="m3-btn m3-btn-subtle" type="button" id="btnResetYongShen" title="清空所有已勾选用神">重置清空</button>
           <button class="m3-btn m3-btn-tonal" type="button" id="btnStartManualGridPick" title="关闭弹窗，直接在九宫格盘面上点击八神、九星、八门、天干、地干进行圈选">
-            <span>手动选取</span>
+            <span>手动选取用神</span>
           </button>
         </div>
         <div class="yongshen-action-group-main">
@@ -1449,7 +1472,7 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js?v=125"></script>
+  <script type="module" src="./js/app.js?v=129"></script>
 
 </body>
 </html>

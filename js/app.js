@@ -20,8 +20,9 @@ import {
   ENGINE_VERSION, NOTE_FIELDS, VERDICTS, newId, formatDateStr, todayStr,
   loadRecords, saveRecords, getRecord, updateRecord, insertRecord, deleteRecord,
   snapshotPan, panFingerprint, settingsOf, sameCastParams, rebuildFollowUps,
-  dueFollowUps, castsOnDay, lastCast, exportRecordsJson, importRecordsJson, statusLabel
-} from './records.js';
+  dueFollowUps, castsOnDay, lastCast, exportRecordsJson, importRecordsJson, statusLabel,
+  getRecordDisplayName
+} from './records.js?v=127';
 import { buildPaipanSteps, cellLayerContent } from './trace.js';
 import { YUNCHOU_PURPOSES, analyzeYunchou, yunchouToText, palaceFactLine } from './yunchou.js';
 import {
@@ -82,6 +83,7 @@ const state = {
   userQuestion: localStorage.getItem('qimen_user_question') || '',
   caseRemark: localStorage.getItem('qimen_case_remark') || '',
   isPendingReveal: false, // 立即起盘防剧透状态 (先取时刻与用神，确认后再揭晓盘面)
+  pendingCast: null, // 当前处于待揭盘状态的会话草稿 (揭盘前不存入案例库，防产生无标题垃圾记录)
   // 当前锁定的起局记录 (立即起盘或读取案例后锁定；改动起局参数需确认并另开新盘)
   activeRecordId: localStorage.getItem('qimen_active_record_id') || null,
   lastReleasedRecordId: null, // 最近一次解除锁定的记录 (报数补起局时关联原局)
@@ -215,12 +217,9 @@ function initServiceWorker() {
       })
       .catch(err => console.warn('[PWA] Service Worker registration failed:', err));
 
-    let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
+      // 禁用后台无感知自动刷新，杜绝在用户看盘或输入过程中突发重载页面
+      console.log('[PWA] Service Worker 控制器已升级，将在下次启动或手动刷新时生效');
     });
   }
 
@@ -678,6 +677,40 @@ function initDateTimeSelectors() {
   syncDateTimeToPickers();
 }
 
+// ---------------- 指定局数紧凑矩阵选择器辅助函数 ----------------
+const NUM_TO_CHINESE = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' };
+
+function formatJuText(val) {
+  if (!val || val === 'auto') return '自动起局';
+  const dun = val.substring(0, 1);
+  const num = parseInt(val.substring(1));
+  const ch = NUM_TO_CHINESE[num] || num;
+  return `${dun}${ch}局`;
+}
+
+function syncManualJuUI() {
+  const selManual = document.getElementById('selManualJu');
+  const txtTrigger = document.getElementById('txtManualJuTrigger');
+  const btnTrigger = document.getElementById('btnManualJuTrigger');
+  const btnAuto = document.getElementById('btnJuAuto');
+  if (!selManual || !txtTrigger) return;
+
+  const val = selManual.value || 'auto';
+  txtTrigger.textContent = formatJuText(val);
+
+  if (val === 'auto') {
+    if (btnTrigger) btnTrigger.classList.remove('is-manual');
+    if (btnAuto) btnAuto.classList.add('active');
+    document.querySelectorAll('.ju-num-chip').forEach(chip => chip.classList.remove('active'));
+  } else {
+    if (btnTrigger) btnTrigger.classList.add('is-manual');
+    if (btnAuto) btnAuto.classList.remove('active');
+    document.querySelectorAll('.ju-num-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.ju === val);
+    });
+  }
+}
+
 // 同步全部界面控件状态 (分段按钮、手动局数下拉框、时间选择框、用神与所问事项)
 function syncControlsUI() {
   // 1. 同步定局方式 Segmented Button (置闰 / 拆补 / 茅山)
@@ -867,40 +900,6 @@ function initControls() {
     if (sel) sel.value = 'default';
     const selHour = document.getElementById('selPanHour');
     if (selHour) state.hour = parseInt(selHour.value);
-  }
-
-  // ---------------- 指定局数紧凑矩阵选择器 (Popover Matrix) ----------------
-  const NUM_TO_CHINESE = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' };
-
-  function formatJuText(val) {
-    if (!val || val === 'auto') return '自动起局';
-    const dun = val.substring(0, 1);
-    const num = parseInt(val.substring(1));
-    const ch = NUM_TO_CHINESE[num] || num;
-    return `${dun}${ch}局`;
-  }
-
-  function syncManualJuUI() {
-    const selManual = document.getElementById('selManualJu');
-    const txtTrigger = document.getElementById('txtManualJuTrigger');
-    const btnTrigger = document.getElementById('btnManualJuTrigger');
-    const btnAuto = document.getElementById('btnJuAuto');
-    if (!selManual || !txtTrigger) return;
-
-    const val = selManual.value || 'auto';
-    txtTrigger.textContent = formatJuText(val);
-
-    if (val === 'auto') {
-      if (btnTrigger) btnTrigger.classList.remove('is-manual');
-      if (btnAuto) btnAuto.classList.add('active');
-      document.querySelectorAll('.ju-num-chip').forEach(chip => chip.classList.remove('active'));
-    } else {
-      if (btnTrigger) btnTrigger.classList.add('is-manual');
-      if (btnAuto) btnAuto.classList.remove('active');
-      document.querySelectorAll('.ju-num-chip').forEach(chip => {
-        chip.classList.toggle('active', chip.dataset.ju === val);
-      });
-    }
   }
 
   function initManualJuPicker() {
@@ -1282,6 +1281,32 @@ function initCalendar() {
     btnViewPan.addEventListener('click', () => {
       if (typeof switchMobileTab === 'function') {
         switchMobileTab('pan');
+      }
+    });
+  }
+
+  const btnCalManual = document.getElementById('btnCalManual');
+  if (btnCalManual) {
+    btnCalManual.addEventListener('click', () => {
+      if (typeof openManualModal === 'function') {
+        openManualModal();
+      } else {
+        const btn = document.getElementById('btnBottomManual');
+        if (btn) btn.click();
+        else openModal('modalManualInput');
+      }
+    });
+  }
+
+  const btnCalYunchou = document.getElementById('btnCalYunchou');
+  if (btnCalYunchou) {
+    btnCalYunchou.addEventListener('click', () => {
+      if (typeof openYunchouModal === 'function') {
+        openYunchouModal();
+      } else {
+        const btn = document.getElementById('btnBottomYunchou');
+        if (btn) btn.click();
+        else openModal('modalYunchou');
       }
     });
   }
@@ -3206,6 +3231,9 @@ const ACTIVE_RECORD_KEY = 'qimen_active_record_id';
 let caseListRefresher = null; // 由案例库模块注入，用于刷新列表
 
 function getActiveRecord() {
+  if (state.isPendingReveal && state.pendingCast) {
+    return state.pendingCast;
+  }
   return state.activeRecordId ? getRecord(state.activeRecordId) : null;
 }
 
@@ -3262,19 +3290,15 @@ function restoreLockedParams(rec) {
   showToast('已保留原局，起局参数未改动');
 }
 
-// 询问是否解除当前起局锁定；返回 true 表示可以继续改动
+// 解除当前起局锁定并平滑过渡；杜绝阻塞式 confirm 弹窗打断用户的看盘或参数调整
 function confirmLeaveLock(actionLabel = '改动起局参数') {
   const rec = getActiveRecord();
   if (!rec) return true;
-  const title = rec.userQuestion || rec.title || rec.dateStr || '当前起局';
-  let msg;
-  if (rec.status === 'pending') {
-    msg = `本局【${rec.dateStr}】尚未揭盘。\n\n${actionLabel}会放弃这一局（记录标为“作废”），按新参数另排一张研究盘。\n\n叶鸿生：刚起盘就觉得时间不对、问题不清楚，这个盘就别看了。\n\n确定放弃这一局吗？`;
-  } else {
-    msg = `当前锁定的是起局记录【${title}】。\n\n${actionLabel}会另开一张新盘，原记录与盘面保持不变。\n\n叶鸿生：固定用一种设置；同一件事要再看，用报数起局。\n\n确定另开新盘吗？`;
+  const isPending = rec.status === 'pending';
+  releaseLock(isPending ? 'void' : 'keep');
+  if (!isPending) {
+    showToast('已平滑脱离案例锁定，原案例记录已妥善留存');
   }
-  if (!window.confirm(msg)) return false;
-  releaseLock(rec.status === 'pending' ? 'void' : 'keep');
   return true;
 }
 
@@ -3282,23 +3306,31 @@ function confirmLeaveLock(actionLabel = '改动起局参数') {
 function guardPrefChange(key, val, label) {
   const rec = getActiveRecord();
   if (!rec || state[key] === val) return true;
-  if (confirmLeaveLock(label)) return true;
-  syncControlsUI();
-  if (typeof syncSettingsModal === 'function') syncSettingsModal();
-  return false;
+  confirmLeaveLock(label);
+  return true;
 }
 
 function releaseLock(mode = 'keep') {
   const rec = getActiveRecord();
   if (rec && mode === 'void' && rec.status === 'pending') {
-    updateRecord(rec.id, r => {
-      r.status = 'void';
-      r.voidReason = '揭盘前改动起局参数，放弃此局';
-    });
+    state.pendingCast = null;
+    try {
+      localStorage.removeItem('qimen_pending_draft');
+    } catch (e) {}
+    if (getRecord(rec.id)) {
+      updateRecord(rec.id, r => {
+        r.status = 'void';
+        r.voidReason = '揭盘前改动起局参数，放弃此局';
+      });
+    }
   }
   state.lastReleasedRecordId = rec ? rec.id : null;
   if (state.isPendingReveal) {
     state.isPendingReveal = false;
+    state.pendingCast = null;
+    try {
+      localStorage.removeItem('qimen_pending_draft');
+    } catch (e) {}
     applyPendingVisualMasks(false);
     const banner = document.getElementById('yongshenCastBanner');
     if (banner) banner.style.display = 'none';
@@ -3349,14 +3381,39 @@ function renderLockBadge() {
   el.title = '起局参数已锁定：改动时间、定局法、排盘法等会提示另开新盘，原记录不变';
 }
 
-// 刷新/重开页面时恢复正在进行的起局记录
+// 刷新/重开页面时恢复正在进行的起局记录或待揭盘草稿
 function restoreActiveRecordOnLoad() {
+  // 1. 先检查是否有进行中的待揭盘草稿 (独立于案例库存储，防污染)
+  try {
+    const rawPending = localStorage.getItem('qimen_pending_draft');
+    if (rawPending) {
+      const draft = JSON.parse(rawPending);
+      if (draft && draft.status === 'pending') {
+        state.pendingCast = draft;
+        state.isPendingReveal = true;
+        applyRecordParamsToState(draft);
+        state.userQuestion = draft.userQuestion || '';
+        state.caseRemark = draft.remark || '';
+        if (Array.isArray(draft.selectedYongShen)) state.selectedYongShen = [...draft.selectedYongShen];
+        if (draft.yongshenNature) state.yongshenNature = draft.yongshenNature;
+        state.calViewYear = state.year;
+        state.calViewMonth = state.month;
+        syncControlsUI();
+        renderCalendar();
+        return;
+      }
+    }
+  } catch (e) {
+    localStorage.removeItem('qimen_pending_draft');
+  }
+
+  // 2. 恢复已保存的锁定案例记录
   const rec = getActiveRecord();
   if (!rec) {
     if (state.activeRecordId) setActiveRecord(null);
     return;
   }
-  if (rec.status === 'void') {
+  if (rec.status === 'void' || rec.status === 'pending') {
     setActiveRecord(null);
     return;
   }
@@ -3365,7 +3422,7 @@ function restoreActiveRecordOnLoad() {
   state.caseRemark = rec.remark || '';
   if (Array.isArray(rec.selectedYongShen)) state.selectedYongShen = [...rec.selectedYongShen];
   if (rec.yongshenNature) state.yongshenNature = rec.yongshenNature;
-  state.isPendingReveal = rec.status === 'pending';
+  state.isPendingReveal = false;
   state.calViewYear = state.year;
   state.calViewMonth = state.month;
   syncControlsUI();
@@ -3375,13 +3432,22 @@ function restoreActiveRecordOnLoad() {
 // 把用神弹窗里的问题/用神/笔记写回当前记录 (防抖自动保存)
 let recordAutosaveTimer = null;
 function scheduleRecordAutosave() {
-  if (!state.activeRecordId) return;
+  if (!state.activeRecordId && !state.pendingCast) return;
   clearTimeout(recordAutosaveTimer);
   recordAutosaveTimer = setTimeout(flushRecordAutosave, 400);
 }
 
 function flushRecordAutosave() {
   clearTimeout(recordAutosaveTimer);
+  if (state.isPendingReveal && state.pendingCast) {
+    state.pendingCast.userQuestion = state.userQuestion || '';
+    if (!state.pendingCast.titleEdited) state.pendingCast.title = state.userQuestion || '';
+    state.pendingCast.remark = state.caseRemark || '';
+    try {
+      localStorage.setItem('qimen_pending_draft', JSON.stringify(state.pendingCast));
+    } catch (e) {}
+    return;
+  }
   const id = state.activeRecordId;
   if (!id) return;
   updateRecord(id, r => {
@@ -3392,14 +3458,6 @@ function flushRecordAutosave() {
 }
 
 function startImmediateCastFlow() {
-  // 0. 上一局还没揭盘就重新起局：上一局作废
-  const prev = getActiveRecord();
-  if (prev && prev.status === 'pending') {
-    updateRecord(prev.id, r => {
-      r.status = 'void';
-      r.voidReason = '未揭盘即重新起局';
-    });
-  }
   flushRecordAutosave();
 
   // 1. 取当前系统时刻 (精确到秒) 并使用固定的起局设置
@@ -3428,7 +3486,7 @@ function startImmediateCastFlow() {
   state.calViewYear = state.year;
   state.calViewMonth = state.month;
 
-  // 2. 新一局：问题与笔记从空白开始 (上一局的内容已自动保存在它自己的记录里)
+  // 2. 新一局：问题与笔记从空白开始
   state.userQuestion = '';
   state.caseRemark = '';
   try {
@@ -3453,8 +3511,8 @@ function startImmediateCastFlow() {
   const minutesSinceLast = recent ? Math.round((now - new Date(recent.createdAt)) / 60000) : null;
   const todayCount = castsOnDay(all, todayStr(now)) + 1;
 
-  // 4. 生成只读起局记录 (待揭盘)
-  const rec = insertRecord({
+  // 4. 生成待揭盘会话草稿 (保存在内存与独立草稿存储中，揭盘前严禁直接入库，彻底杜绝无标题垃圾案例)
+  const draft = {
     id: newId(),
     source: 'cast',
     status: 'pending',
@@ -3473,8 +3531,13 @@ function startImmediateCastFlow() {
       lastCastQuestion: recent ? (recent.userQuestion || '') : '',
       castIndexToday: todayCount
     }
-  });
-  state.activeRecordId = null; // 先不锁，避免首次排盘被兜底拦截
+  };
+  state.pendingCast = draft;
+  try {
+    localStorage.setItem('qimen_pending_draft', JSON.stringify(draft));
+  } catch (e) {}
+
+  state.activeRecordId = draft.id;
   state.isPendingReveal = true;
   syncControlsUI();
   renderCalendar();
@@ -3484,20 +3547,20 @@ function startImmediateCastFlow() {
   }
 
   executePaipan();
-  setActiveRecord(rec.id);
 
-  // 5. 立即写入盘面快照：锁住的是数据，不只是遮罩
+  // 5. 立即写入盘面快照至草稿
   if (state.currentPan) {
     const snap = snapshotPan(state.currentPan);
-    updateRecord(rec.id, r => {
-      r.panSnapshot = snap;
-      r.panFingerprint = panFingerprint(snap);
-      r.pillars = { ...state.currentPan.pillars };
-      r.juDesc = state.currentPan.dingju ? state.currentPan.dingju.desc : '';
-    });
+    draft.panSnapshot = snap;
+    draft.panFingerprint = panFingerprint(snap);
+    draft.pillars = { ...state.currentPan.pillars };
+    draft.juDesc = state.currentPan.dingju ? state.currentPan.dingju.desc : '';
+    try {
+      localStorage.setItem('qimen_pending_draft', JSON.stringify(draft));
+    } catch (e) {}
   }
-  refreshCaseList(rec.id);
-  renderCastDisciplineHint(rec);
+  renderLockBadge();
+  renderCastDisciplineHint(draft);
 
   if (todayCount > 3) {
     showToast(`今天已是第 ${todayCount} 次正式起局。叶鸿生：替人预测一天最好两三局，起太多信息会混乱`);
@@ -3538,24 +3601,55 @@ function revealPanNow() {
 
   executePaipan();
 
-  // 揭盘即存档：记录揭盘时刻与揭盘时的用神 (之后改用神也能看到最初取的是什么)
+  // 揭盘即存档：将待揭盘草稿正式转为保存案例入库，彻底杜绝“无标题格局”
   if (rec) {
     const ctx = rec.castContext || {};
-    const sameQuestionRepeat = !!(state.userQuestion && ctx.lastCastQuestion &&
-      ctx.lastCastQuestion.trim() === state.userQuestion.trim() &&
+    const question = (state.userQuestion || '').trim();
+    const sameQuestionRepeat = !!(question && ctx.lastCastQuestion &&
+      ctx.lastCastQuestion.trim() === question &&
       ctx.minutesSinceLastCast !== null && ctx.minutesSinceLastCast < 120);
-    updateRecord(rec.id, r => {
-      r.status = 'revealed';
-      r.revealedAt = new Date().toISOString();
-      r.userQuestion = state.userQuestion || '';
-      if (!r.titleEdited) r.title = state.userQuestion || r.title || '';
-      r.remark = state.caseRemark || '';
-      r.selectedYongShen = [...(state.selectedYongShen || [])];
-      r.ysAtReveal = [...(state.selectedYongShen || [])];
-      r.yongshenNature = state.yongshenNature;
-      r.flags = { ...(r.flags || {}), repeatWithin2h: sameQuestionRepeat };
-    });
-    refreshCaseList(rec.id);
+
+    const curPan = state.currentPan;
+    const snap = curPan ? snapshotPan(curPan) : rec.panSnapshot;
+    const finalJuDesc = (curPan && curPan.dingju) ? curPan.dingju.desc : (rec.juDesc || '');
+    const finalPillars = (curPan && curPan.pillars) ? { ...curPan.pillars } : (rec.pillars || null);
+
+    const recordToSave = {
+      ...rec,
+      status: 'revealed',
+      revealedAt: new Date().toISOString(),
+      userQuestion: question,
+      remark: state.caseRemark || '',
+      selectedYongShen: [...(state.selectedYongShen || [])],
+      ysAtReveal: [...(state.selectedYongShen || [])],
+      yongshenNature: state.yongshenNature,
+      panSnapshot: snap,
+      panFingerprint: snap ? panFingerprint(snap) : '',
+      pillars: finalPillars,
+      juDesc: finalJuDesc,
+      flags: { ...(rec.flags || {}), repeatWithin2h: sameQuestionRepeat }
+    };
+
+    // 规范化标题：用户有问题则以问题为名，无问题则智能生成“阴遁一局 · 乙巳日丁亥时”等规范标题
+    recordToSave.title = question || getRecordDisplayName(recordToSave);
+    recordToSave.titleEdited = !!question;
+
+    let saved;
+    const existing = getRecord(rec.id);
+    if (existing) {
+      saved = updateRecord(rec.id, r => { Object.assign(r, recordToSave); });
+    } else {
+      saved = insertRecord(recordToSave);
+    }
+
+    state.pendingCast = null;
+    try {
+      localStorage.removeItem('qimen_pending_draft');
+    } catch (e) {}
+
+    setActiveRecord(saved.id);
+    refreshCaseList(saved.id);
+
     if (sameQuestionRepeat) {
       setTimeout(() => showToast('提示：同一件事两小时内重复起局，信息容易混乱；已在记录中标注'), 1800);
     }
@@ -3564,7 +3658,24 @@ function revealPanNow() {
   const ysText = (state.selectedYongShen && state.selectedYongShen.length > 0)
     ? `【${state.selectedYongShen.join('、')}】`
     : '【默认首领值符】';
-  showToast(`起局成功！已锁定用神${ysText}，盘面已揭晓并自动存入案例库`);
+  showToast(`起局成功！已锁定用神${ysText}，盘面已揭晓并存入案例库`);
+}
+
+function cancelPendingCast() {
+  if (!state.isPendingReveal && !state.pendingCast) return;
+  state.isPendingReveal = false;
+  state.pendingCast = null;
+  try {
+    localStorage.removeItem('qimen_pending_draft');
+  } catch (e) {}
+  applyPendingVisualMasks(false);
+  const banner = document.getElementById('yongshenCastBanner');
+  if (banner) banner.style.display = 'none';
+  const btnConfirm = document.getElementById('btnConfirmYongShen');
+  if (btnConfirm) btnConfirm.textContent = '确定';
+  setActiveRecord(null);
+  executePaipan();
+  showToast('已取消本次待揭盘');
 }
 
 
@@ -4205,10 +4316,15 @@ const SOURCE_NAMES = { cast: '立即起盘', manual: '手动保存', baoshu: '�
 
 function initCasesStorage() {
   const selCases = document.getElementById('selCaseList');
+  const listContainer = document.getElementById('caseModernList');
   const btnLoad = document.getElementById('btnLoadSelectedCase');
 
   function selectedRecord() {
-    const id = selCases ? selCases.value : '';
+    let id = selCases ? selCases.value : '';
+    if (!id && listContainer) {
+      const activeTile = listContainer.querySelector('.case-item-tile.active');
+      if (activeTile) id = activeTile.dataset.id;
+    }
     return id ? getRecord(id) : null;
   }
 
@@ -4228,9 +4344,9 @@ function initCasesStorage() {
     const metaEl = document.getElementById('caseDetailMeta');
     const btnVoid = document.getElementById('btnVoidCase');
 
-    if (titleEl) titleEl.textContent = item.title || item.userQuestion || '无标题案例';
+    if (titleEl) titleEl.textContent = getRecordDisplayName(item);
     if (timeEl) timeEl.textContent = item.dateStr || '';
-    if (qEl) qEl.textContent = item.userQuestion || item.title || '（未记录具体问题）';
+    if (qEl) qEl.textContent = item.userQuestion || getRecordDisplayName(item);
     if (remarkEl) {
       const n = item.notes || {};
       const hasStructured = NOTE_FIELDS.some(f => n[f.key]);
@@ -4260,31 +4376,107 @@ function initCasesStorage() {
   }
 
   function loadCases(selectId = null) {
-    if (!selCases) return;
     const stored = loadRecords();
-    selCases.innerHTML = '';
-    const countEl = document.getElementById('txtCaseCount');
-    if (countEl) countEl.textContent = `查找到${stored.length}个`;
-    const emptyEl = document.getElementById('caseEmptyState');
+    if (selCases) selCases.innerHTML = '';
+    if (listContainer) listContainer.innerHTML = '';
 
-    stored.forEach(item => {
-      const opt = document.createElement('option');
-      opt.value = item.id;
-      const label = statusLabel(item);
-      opt.textContent = `${label ? label + ' ' : ''}[${item.dateStr}] ${item.title || item.userQuestion || '无标题格局'}`;
-      selCases.appendChild(opt);
+    // 过滤掉尚未揭盘的会话草稿以及无有效内容的作废项
+    const validCases = stored.filter(item => {
+      if (!item) return false;
+      if (item.status === 'pending') return false;
+      if (item.status === 'void' && !item.title && !item.userQuestion && !item.remark && !item.panSnapshot) return false;
+      return true;
     });
 
-    if (stored.length > 0) {
+    const countEl = document.getElementById('txtCaseCount');
+    if (countEl) countEl.textContent = `查找到${validCases.length}个`;
+    const emptyEl = document.getElementById('caseEmptyState');
+
+    const wanted = selectId || state.activeRecordId;
+    const target = validCases.find(r => r.id === wanted) || (validCases.length > 0 ? validCases[0] : null);
+
+    validCases.forEach(item => {
+      const label = statusLabel(item);
+      const title = getRecordDisplayName(item);
+      const isSelected = Boolean(target && target.id === item.id);
+
+      // 同步隐藏的原生 select option (保持DOM元素与自动化测试/向后兼容)
+      if (selCases) {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = `${label ? label + ' ' : ''}[${item.dateStr}] ${title}`;
+        if (isSelected) opt.selected = true;
+        selCases.appendChild(opt);
+      }
+
+      // 渲染现代直观案例磁贴 (支持多端直接浏览更多案例，无需下拉选择)
+      if (listContainer) {
+        const tile = document.createElement('div');
+        tile.className = `case-item-tile ${isSelected ? 'active' : ''}`;
+        tile.dataset.id = item.id;
+
+        // 局象干支提炼
+        let juSummary = item.juDesc || '';
+        if (!juSummary && item.pillars) {
+          juSummary = `${item.pillars.day}日 ${item.pillars.hour}时`;
+        }
+        if (!juSummary) {
+          juSummary = recordSummary(item);
+        }
+
+        const hasNote = Boolean(item.remark || (item.notes && Object.values(item.notes).some(v => typeof v === 'string' && v.trim())));
+        const dueList = (item.followUps || []).filter(f => !f.done && f.date <= todayStr());
+        const hasDue = dueList.length > 0;
+
+        tile.innerHTML = `
+          <div class="case-tile-row1">
+            ${label ? `<span class="case-tile-badge">${escapeHtml(label)}</span>` : ''}
+            <span class="case-tile-title" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+            <span class="case-tile-time">${escapeHtml(item.dateStr || '')}</span>
+          </div>
+          <div class="case-tile-row2">
+            <span class="case-tile-ju">${escapeHtml(juSummary)}</span>
+            <div class="case-tile-tags">
+              ${hasNote ? '<span class="case-tile-tag note-tag">📝笔记</span>' : ''}
+              ${hasDue ? `<span class="case-tile-tag due-tag">🔔${dueList.length}条待访</span>` : ''}
+            </div>
+          </div>
+        `;
+
+        tile.addEventListener('click', () => {
+          listContainer.querySelectorAll('.case-item-tile').forEach(t => t.classList.remove('active'));
+          tile.classList.add('active');
+          if (selCases) selCases.value = item.id;
+          showCaseDetail(item);
+        });
+
+        tile.addEventListener('dblclick', () => {
+          applyCase(item);
+        });
+
+        listContainer.appendChild(tile);
+      }
+    });
+
+    if (validCases.length > 0) {
       if (emptyEl) emptyEl.style.display = 'none';
-      selCases.style.display = 'block';
-      const wanted = selectId || state.activeRecordId;
-      const target = stored.find(r => r.id === wanted) || stored[0];
-      selCases.value = target.id;
+      if (listContainer) listContainer.style.display = 'flex';
+      if (selCases) {
+        selCases.value = target ? target.id : '';
+      }
       showCaseDetail(target);
+
+      // 滚动选中项至可见视口
+      if (listContainer) {
+        const activeTile = listContainer.querySelector('.case-item-tile.active');
+        if (activeTile) {
+          activeTile.scrollIntoView({ block: 'nearest' });
+        }
+      }
     } else {
       if (emptyEl) emptyEl.style.display = 'flex';
-      selCases.style.display = 'none';
+      if (listContainer) listContainer.style.display = 'none';
+      if (selCases) selCases.style.display = 'none';
       showCaseDetail(null);
     }
   }
@@ -4349,7 +4541,7 @@ function initCasesStorage() {
       openYSModalHandler(true);
       return;
     }
-    showToast(`已读取案例【${item.title || item.userQuestion || item.dateStr}】的原盘、问题与笔记`);
+    showToast(`已读取案例【${getRecordDisplayName(item)}】的原盘、问题与笔记`);
   }
 
   // 保存：有锁定记录时更新这条记录，没有时把当前研究盘另存为新记录
@@ -4596,6 +4788,25 @@ function initCasesStorage() {
         fileImport.value = '';
       };
       reader.readAsText(file);
+    });
+  }
+
+  const btnClearInvalid = document.getElementById('btnClearInvalidCases');
+  if (btnClearInvalid) {
+    btnClearInvalid.addEventListener('click', () => {
+      const list = loadRecords();
+      const beforeCount = list.length;
+      const filtered = list.filter(r => r && r.status !== 'pending' && r.status !== 'void' && (r.titleEdited || r.userQuestion || r.remark || r.panSnapshot));
+      const removed = beforeCount - filtered.length;
+      if (removed <= 0) {
+        showToast('案例库很整洁，暂无需要清理的无效记录');
+        return;
+      }
+      if (!window.confirm(`检测到 ${removed} 条未完成或已作废的无效记录，确定彻底清理吗？\n\n已正式保存的排盘案例与笔记不会受到影响。`)) return;
+      saveRecords(filtered);
+      loadCases();
+      renderDueBanner();
+      showToast(`已成功清理 ${removed} 条无效记录`);
     });
   }
 
@@ -5200,6 +5411,18 @@ function updateBoardCardCenter(pan) {
   }
 }
 
+// 首次选取用神后自动触发动态演盘
+function triggerAutoAnimOnFirstYongShen() {
+  if (!state.autoAnimOnYongshen) return;
+  if (state.hasAnimatedOnFirstYS) return;
+  if (!state.selectedYongShen || state.selectedYongShen.length === 0) return;
+  state.hasAnimatedOnFirstYS = true;
+
+  setTimeout(() => {
+    startBoardAnimation();
+  }, 350);
+}
+
 // 初始化选取用神与所问事项弹窗交互
 function initYongShenModal() {
   const btnSelectYongShen = document.getElementById('btnSelectYongShen');
@@ -5644,6 +5867,10 @@ function initYongShenModal() {
   if (btnOverlayReveal) {
     btnOverlayReveal.addEventListener('click', () => revealPanNow());
   }
+  const btnOverlayCancel = document.getElementById('btnOverlayCancelCast');
+  if (btnOverlayCancel) {
+    btnOverlayCancel.addEventListener('click', cancelPendingCast);
+  }
 
   // 断事笔记输入监听与实时同步
   if (txtUserRemark) {
@@ -5739,18 +5966,6 @@ function initYongShenModal() {
     scheduleRecordAutosave();
   });
 
-// 首次选取用神后自动触发动态演盘
-function triggerAutoAnimOnFirstYongShen() {
-  if (!state.autoAnimOnYongshen) return;
-  if (state.hasAnimatedOnFirstYS) return;
-  if (!state.selectedYongShen || state.selectedYongShen.length === 0) return;
-  state.hasAnimatedOnFirstYS = true;
-
-  setTimeout(() => {
-    startBoardAnimation();
-  }, 350);
-}
-
   // 确认并应用用神
   if (btnConfirmYS) {
     btnConfirmYS.addEventListener('click', () => {
@@ -5811,12 +6026,24 @@ function triggerAutoAnimOnFirstYongShen() {
     });
   }
 
+  // 获取当前选中的用神列表
+  function getSelectedYongShenFromUI() {
+    return Array.from(selectedYongShenMap.keys());
+  }
+
   // 盘面手动选按钮交互
   const btnStartManualGridPick = document.getElementById('btnStartManualGridPick');
   if (btnStartManualGridPick) {
     btnStartManualGridPick.addEventListener('click', () => {
+      if (state.isPendingReveal) {
+        showToast('待揭盘状态下盘面已遮罩防剧透：请先在弹窗内选定用神并点击“确定用神并揭盘”');
+        return;
+      }
       state.userQuestion = iptQuestion ? iptQuestion.value.trim() : '';
       state.selectedYongShen = getSelectedYongShenFromUI();
+      selectedYongShenMap.forEach((it, name) => {
+        state.selectedYongShenNatures[name] = it.nature;
+      });
       const checkedRad = document.querySelector('#modalYongShen input[name="radKongOpposite"]:checked');
       if (checkedRad) {
         state.yongshenNature = checkedRad.value;
@@ -5824,6 +6051,7 @@ function triggerAutoAnimOnFirstYongShen() {
       try {
         localStorage.setItem('qimen_user_question', state.userQuestion);
         localStorage.setItem('qimen_selected_yongshen', JSON.stringify(state.selectedYongShen));
+        localStorage.setItem('qimen_selected_yongshen_natures', JSON.stringify(state.selectedYongShenNatures));
         localStorage.setItem('qimen_zhifu_manually_cleared', state.selectedYongShen.includes('值符') ? '0' : '1');
         localStorage.setItem('qimen_yongshen_nature', state.yongshenNature);
       } catch (e) {
@@ -6652,9 +6880,10 @@ function initManualInputModal() {
     openModal('modalManualInput');
   }
 
-  if (btnBottomManual) {
-    btnBottomManual.addEventListener('click', openManualModal);
-  }
+  ['btnBottomManual', 'btnCalManual'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', openManualModal);
+  });
 
   // 7. 确认录入并排盘
   if (btnConfirm) {
@@ -8600,7 +8829,7 @@ function initYunchouModal() {
   if (sel) {
     sel.innerHTML = YUNCHOU_PURPOSES.map(p => `<option value="${p.key}">${escapeHtml(p.label)}</option>`).join('');
   }
-  ['btnOpenYunchou', 'btnBottomYunchou'].forEach(id => {
+  ['btnOpenYunchou', 'btnBottomYunchou', 'btnCalYunchou'].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.addEventListener('click', openYunchouModal);
   });
